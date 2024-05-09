@@ -1,0 +1,86 @@
+lang: de
+
+project:
+  type: book
+
+book:
+  title: "Daniela's Notes for Nicemboim, Schad, & Vasishth (2024)"
+  output-file: "Nicenboim_2024_DP-notes"
+  subtitle: "An Introduction to Bayesian Data Analysis for Cognitive Science"
+  author: "Daniela Palleschi"
+  date: "05/08/2024"
+  twitter-card: true
+  # downloads: [pdf]
+  navbar:
+    right:
+      - icon: home
+        href: https://daniela-palleschi.github.io/
+        text: D. Palleschi
+      # - icon: github
+      #   href: https://github.com/daniela-palleschi/r4ling
+        # aria-label: Source Code
+      # - icon: life-preserver
+      #   href: https://moodle.hu-berlin.de/course/view.php?id=124123
+      #   text: Moodle
+  chapters:
+    # - part: "Kursübersicht"
+    #   chapters:
+    - index.qmd
+        # - setup/setup.qmd
+    - part: "Chapter notes"
+      chapters:
+        - book_notes/book_notes.qmd
+        - book_notes/ch2.qmd
+    - part: "Chapter notes"
+      chapters:
+          - book_notes/ch8_contrasts_notes.qmd
+    - part: "Book exercises"
+      chapters:
+        - book_exercises/book_exercises.qmd
+        # - book_exercises/ch2_exercises.qmd
+        # - book_exercises/ch3_exercises.qmd
+        - book_exercises/ch4_exercises.qmd
+        - book_exercises/ch5_exercises.qmd
+        - book_exercises/ch6_exercises.qmd
+        - book_exercises/ch8_exercises.qmd
+    - references.qmd
+
+bibliography: references.bib
+csl: apa.csl
+crossref:
+  exm-prefix: ex.   # (default is "Figure")
+  # labels: alpha a        # (default is arabic)
+  # subref-labels: alpha t # (default is alpha a)
+
+format:
+  html:
+    toc: true
+    toc-title: "Chatper contents"
+    number-sections: true
+    toc-depth: 4
+    include-after-body: custom.html
+    include-in-header: mathjax.html
+    code-tools: true
+    code-overflow: wrap
+    page-layout: full
+    embed-resources: true
+    css: cutsom.css
+    theme:
+      light: flatly
+      dark: darkly
+    execute:
+      message: false
+      warning: false
+  # pdf:
+  #   documentclass: scrreport
+  #   toc: true 
+  #   toc-depth: 2
+execute:
+  eval: true
+  echo: true
+  message: false
+  error: true
+  warning: false
+  fig-align: "center"
+  fig-asp: .618
+

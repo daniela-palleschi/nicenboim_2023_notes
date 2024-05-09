@@ -1,0 +1,126 @@
+---
+title: "Ch. 1 Exercises"
+---
+
+# Set up {-}
+
+```{r, results = "hide", warning=F,message=F,error=F}
+# set global knit options
+knitr::opts_chunk$set(echo = T, # print chunks?
+                      eval = T, # run chunks?
+                      error = F, # print errors?
+                      warning = F, # print warnings?
+                      message = F, # print messages?
+                      cache = T # cache?; be careful with this!
+                      )
+
+# suppress scientific notation
+options(scipen=999)
+
+# play a sound if error encountered
+options(error = function() {beepr::beep(9)})
+
+# load packages
+## create list of package names
+packages <- c( #"SIN", # this package was removed from the CRAN repository
+               "MASS", "dplyr", "tidyr", "purrr", "extraDistr", "ggplot2", "loo", "bridgesampling", "brms", "bayesplot", "tictoc", "hypr", "bcogsci", "papaja", "grid", "kableExtra", "gridExtra", "lme4", "cowplot", "pdftools", "cmdstanr", "rootSolve", "rstan"
+  )
+
+# NB: if you haven't already installed bcogsci through devtools, it won't be loaded
+## Now load or install & load all
+package.check <- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      install.packages(x, dependencies = TRUE)
+      library(x, character.only = TRUE)
+    }
+  }
+)
+
+# this is also required, taken from the textbook
+
+## Save compiled models:
+rstan_options(auto_write = FALSE)
+## Parallelize the chains using all the cores:
+options(mc.cores = parallel::detectCores())
+# To solve some conflicts between packages
+select <- dplyr::select
+extract <- rstan::extract
+```
+
+
+1.1 Practice with pnorm Part 1
+
+Given a normal distribution with mean 500 and standard deviation 100, use the pnorm function to calculate the probability of obtaining values between 200 and 800 from this distribution.
+
+```{r}
+pnorm(800, mean = 500, sd = 100) - pnorm(200, mean = 500, sd = 100)
+```
+
+1.2 Practice with pnorm Part 2
+
+```{r}
+pnorm(700, 800, 150, lower.tail=T)
+pnorm(900, 800, 150, lower.tail=F)
+pnorm(800, 800, 150, lower.tail=F)
+```
+
+1.3 Practice with pnorm Part 3
+
+```{r}
+pnorm(550,600,200,lower.tail=T)
+pnorm(800,600,200,lower.tail=T) -
+  pnorm(300,600,200,lower.tail=T)
+pnorm(900,600,200,lower.tail=F)
+```
+
+Exercise 1.4 Practice using the qnorm function - Part 1
+
+```{r}
+qnorm(c(.1,.9),mean=1,sd=1)
+```
+
+Exercise 1.5 Practice using the qnorm function - Part 2
+
+```{r}
+qnorm(c(.1,.9), mean=650, sd=125)
+```
+
+Exercise 1.6 Practice getting summaries from samples - Part 1
+
+```{r}
+data_gen1 <- rnorm(1000, 300, 200)
+
+# mean
+mean(data_gen1)
+# sd
+sd(data_gen1)
+
+# q1 and q2
+qnorm(c(.1,.9), mean(data_gen1), sd(data_gen1))
+
+hist(data_gen1)
+```
+
+Exercise 1.7 Practice getting summaries from samples - Part 2
+
+```{r}
+# generate data with truncated normal distribution
+data_gen1 <- rtnorm(1000, 300, 200, a = 0)
+
+# mean
+mean(data_gen1)
+# sd
+sd(data_gen1)
+
+# q1 and q2
+qnorm(c(.1,.9), mean(data_gen1), sd(data_gen1))
+
+hist(data_gen1)
+```
+
+Exercise 1.8 Practice with a variance-covariance matrix for a bivariate distribution
+
+
+

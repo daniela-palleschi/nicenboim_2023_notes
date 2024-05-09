@@ -1,0 +1,107 @@
+---
+title: "Ch. 6 - Priors"
+cache: true
+---
+
+
+# Chapter 6
+
+```{r}
+pacman::p_load(
+  bcogsci,
+  brms,
+  dplyr,
+  tibble,
+  lme4
+)
+```
+
+## Eliciting priors from oneself for a self-paced reading study: A simple example
+
+An example: English relative clauses
+
+```{r}
+data("df_gg05_rc")
+```
+
+
+```{r}
+df_gg05_rc <- df_gg05_rc %>%
+  mutate(c_cond = if_else(condition == "objgap", 1 / 2, -1 / 2))
+```
+
+
+```{r}
+head(df_gg05_rc)
+```
+
+
+```{r}
+fit_gg05 <- brm(RT ~ c_cond + (1 + c_cond || subj) +
+                  (1 + c_cond || item), df_gg05_rc)
+```
+
+```{r}
+(default_b <- posterior_summary(fit_gg05,
+                                variable = "b_c_cond"))
+```
+
+
+Compare these estimates to a frequentist model:
+
+```{r}
+fit_lmer <- lmer(RT ~ c_cond + (1 + c_cond || subj) +
+                   (1 + c_cond || item), df_gg05_rc)
+b <- summary(fit_lmer)$coefficients["c_cond", "Estimate"]
+SE <- summary(fit_lmer)$coefficients["c_cond", "Std. Error"]
+## estimate of the slope and
+## lower and upper bounds of the 95% CI:
+(lmer_b <- c(b, b - (2 * SE), b + (2 * SE)))
+```
+
+They're quite similar to the Bayesian model we ran above. This is because we had used default priors, which are uninformative and don't influence the posterior much. So the likelihood dominates when determining the posteriors.
+
+Let's use another uninformative prior, uniform priors:
+
+```{r}
+fit_gg05_unif <- brm(RT ~ c_cond + (1 + c_cond || subj) +
+                       (1 + c_cond || item),
+  prior = c(
+    prior(uniform(-2000, 2000), class = Intercept,
+          lb = -2000, ub = 2000),
+    prior(uniform(-2000, 2000), class = b,
+          lb = -2000, ub = 2000),
+    prior(normal(0, 500), class = sd),
+    prior(normal(0, 500), class = sigma)
+  ), df_gg05_rc
+  )
+```
+
+```{r}
+(uniform_b <- posterior_summary(fit_gg05_unif, 
+                                variable = c("b_c_cond")) )
+```
+
+```{r}
+uniform_b <-
+  uniform_b |> 
+  as_tibble() |> 
+   mutate(model = "Uniform")
+
+default_b <- default_b |> 
+  as_tibble() |> 
+   mutate(model = "Default")
+
+names <- names(default_b)
+values <- c(lmer_b[1], SE, lmer_b[2], lmer_b[3], "Frequentist")
+
+rbind(names, values) |> as_tibble()
+```
+
+### Eliciting a prior for the intercept
+
+
+
+
+
+

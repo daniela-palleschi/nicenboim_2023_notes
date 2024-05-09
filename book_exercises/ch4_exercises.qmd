@@ -1,0 +1,485 @@
+---
+title: "Ch 4. Exercises"
+author: "Daniela Palleschi"
+format:
+  html:
+    toc: true
+    # html-math-method: katex
+    self-contained: true
+    css: styles.css
+    number-sections: true
+    number-depth: 1
+    code-overflow: wrap
+    code-tools: true
+editor_options: 
+  chunk_output_type: console
+# bibliography: references.json
+biblio-style: apalike
+---
+
+# Set options {.unnumbered}
+
+```{r, eval = T}
+# set condition so that when we knit a single child Rmd we also get the references for just that section
+## the parent.Rmd creates 'knit_type' to 'parent'; if this is a child knit then 'knit_type' does not exist yet
+
+# if 'parent_knit' exists, then it was created in 'parent.Rmd' and this is a parent knit, so keep it unchanged, otherwise call it 'child'
+knit_type = ifelse(exists("knit_type"),knit_type,"chapter")
+```
+
+```{r setup, message = F}
+#| code-fold: true
+
+# set global knit options
+knitr::opts_chunk$set(echo = T,
+                      eval = T,
+                      error = F,
+                      warning = F,
+                      message = F,
+                      cache = T)
+
+# suppress scientific notation
+options(scipen=999)
+
+# list of required packages
+packages <- c( #"SIN", # this package was removed from the CRAN repository
+               "MASS", "dplyr", "tidyr", "purrr", "extraDistr", "ggplot2", "loo", "bridgesampling", "brms", "bayesplot", "tictoc", "hypr", "bcogsci", "papaja", "grid", "kableExtra", "gridExtra", "lme4", "cowplot", "pdftools", "cmdstanr", "rootSolve", "rstan"
+  )
+
+# NB: if you haven't already installed bcogsci through devtools, it won't be loaded
+## Now load or install & load all
+package.check <- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      install.packages(x, dependencies = TRUE)
+      library(x, character.only = TRUE)
+    }
+  }
+)
+
+# this is also required, taken from the textbook
+
+## Save compiled models:
+rstan_options(auto_write = FALSE)
+## Parallelize the chains using all the cores:
+options(mc.cores = parallel::detectCores())
+# To solve some conflicts between packages
+select <- dplyr::select
+extract <- rstan::extract
+```
+
+# Chapter 4
+
+## Exercise 4.1 - A simple linear regression: Power posing and testosterone.
+
+Load the following data set:
+
+```{r}
+data("df_powerpose")
+head(df_powerpose)
+```
+
+The data set, which was originally published in Carney, Cuddy, and Yap (2010) but released in modified form by Fosse (2016), shows the testosterone levels of 39 different individuals, before and after treatment, where treatment refers to each individual being assigned to a high power pose or a low power pose. In the original paper by Carney, Cuddy, and Yap (2010), the unit given for testosterone measurement (estimated from saliva samples) was picograms per milliliter (pg/ml). One picogram per milliliter is 0.001 nanogram per milliliter (ng/ml).
+
+The research hypothesis is that on average, assigning a subject a high power pose vs. a low power pose will lead to higher testosterone levels after treatment. Assuming that you know nothing about normal ranges of testosterone using salivary measurement, choose an appropriate Cauchy prior (e.g., $Cauchy(0,2.5)$ for the target parameter(s).
+
+Investigate this claim using a linear model and the default priors of `brms.` You'll need to estimate the effect of a new variable that encodes the change in testosterone.
+
+### My work
+
+-   DV: change in testosterone levels (continuous, `testm2`-`testm1`)
+-   IV: `hptreat` (binomial: high/low)
+
+```{r}
+# create change variable
+df_powerpose <- df_powerpose %>%
+  mutate(change = testm2-testm1)
+head(df_powerpose)
+```
+
+```{r}
+# eyeball DV distribution
+hist(df_powerpose$change)
+```
+
+```{r}
+# order factor
+df_powerpose$hptreat <- factor(df_powerpose$hptreat, levels = c("Low", "High"))
+levels(df_powerpose$hptreat)
+```
+
+```{r}
+# set contrasts
+contrasts(df_powerpose$hptreat) <- c(-0.5,+0.5)
+contrasts(df_powerpose$hptreat)
+```
+
+```{r}
+# fit model
+fit_powerpose <- brm(
+  change ~ 1 + hptreat,
+  data = df_powerpose,
+  family = gaussian()
+)
+```
+
+```{r}
+# inspect model
+fit_powerpose
+```
+
+```{r}
+plot(fit_powerpose)
+pp_check(fit_powerpose, ndraws=100)
+```
+
+::: callout-tip
+#### My answer
+
+The mean posterior effect for testosterone level change is `r round(mean(as_draws_df(fit_powerpose)$b_hptreat1),2)`, with 95% CrI \[`r round(quantile(as_draws_df(fit_powerpose)$b_hptreat1, c(.025,.975)),2)`\]. Because the effect is positive (and we set our contrasts to `Low` = `-0.5`, `High` = `+0.5`), this reflects an increase in testosterone level in the high powerpose condition (compared to low powerpose). However, the 95% CrI include 0, so we can't conclude the effect is reliable.
+:::
+
+## Exercise 4.2 - Another linear regression model: Revisiting attentional load effect on pupil size.
+
+Here, we revisit the analysis shown in the chapter, on how attentional load affects pupil size.
+
+a.  Our priors for this experiment were quite arbitrary. How do the prior predictive distributions look like? Do they make sense?
+b.  Is our posterior distribution sensitive to the priors that we selected? Perform a sensitivity analysis to find out whether the posterior is affected by our choice of prior for the $sigma$.
+c.  Our data set includes also a column that indicates the trial number. Could it be that trial has also an effect on the pupil size? As in `lm`, we indicate another main effect with a `+` sign. How would you communicate the new results?
+
+### My work
+
+Re-load data
+
+```{r}
+# load data
+data("df_pupil_pilot")
+# centre IV
+df_pupil <- df_pupil %>%
+    mutate(c_load = load - mean(load))
+```
+
+#### a. Prior predictive distributions
+
+Run prior predictive check
+
+```{r}
+fit_pupil_prior <- brm(
+  p_size ~ 1 + c_load,
+  data = df_pupil,
+  family = gaussian(),
+  prior = c(
+    prior(normal(1000, 500), class = Intercept),
+    prior(normal(0, 1000), class = sigma),
+    prior(normal(0, 100),
+          class = b, coef = c_load)
+  ),
+    sample_prior = "only",
+    # PRIOR PRED DISTR
+    control = list(adapt_delta = .9)
+)
+```
+
+```{r}
+pp_check(fit_pupil_prior, ndraws=100)
+```
+
+::: callout-tip
+#### My answer
+
+No our priors don't make sense because there are negative pupil sizes.
+:::
+
+#### b. Sensitivity analysis
+
+Re-run model
+
+```{r}
+# run model
+fit_pupil <- brm(p_size ~ 1 + c_load,
+                 data = df_pupil,
+                 family = gaussian(),
+                 prior = c(
+                   prior(normal(1000,500), class = Intercept),
+                   prior(normal(0,1000), class = sigma),
+                   prior(normal(0,100), 
+                         class = b, coef = c_load) # predictor prior
+                 )
+                 )
+```
+
+```{r}
+# 95% CrI?
+as_draws_df(fit_pupil)$b_Intercept %>%
+  quantile(c(0.025, 0.975))
+```
+
+```{r}
+# run model
+fit_pupil_prin <- brm(p_size ~ 1 + c_load,
+                 data = df_pupil,
+                 family = gaussian(),
+                 prior = c(
+                   prior(normal(300,200), class = Intercept),
+                   prior(normal(0,100), class = sigma),
+                   prior(normal(0,100), 
+                         class = b, coef = c_load) # predictor prior
+                 )
+                 )
+```
+
+```{r}
+# 95% CrI?
+as_draws_df(fit_pupil_prin)$b_Intercept %>%
+  quantile(c(0.025, 0.975))
+```
+
+::: callout-tip
+#### My answer
+
+With our original priors, the change in pupil size per unit change of cognitive load is `r round(mean(as_draws_df(fit_pupil)$b_c_load),2)`, with 95% CrI \[`r round(quantile(as_draws_df(fit_pupil)$b_c_load, c(.025,.975)),2)`\]. With more principled priors, this becomes a change of `r round(mean(as_draws_df(fit_pupil_prin)$b_c_load),2)`, with 95% CrI \[`r round(quantile(as_draws_df(fit_pupil_prin)$b_c_load, c(.025,.975)),2)`\]. The change is not very big, and so our priors do not have a large influence over the posteriors.
+:::
+
+#### c. Covariate
+
+Add trial covariate (centre it first).
+
+```{r}
+df_pupil <- df_pupil %>%
+  mutate(c_trial = trial-mean(trial))
+```
+
+```{r}
+# run model
+fit_pupil <- brm(p_size ~ 1 + c_load + c_trial,
+                 data = df_pupil,
+                 family = gaussian(),
+                 prior = c(
+                   prior(normal(1000,500), class = Intercept),
+                   prior(normal(0,1000), class = sigma),
+                   prior(normal(0,100), 
+                         class = b) # predictor prior
+                 )
+                 )
+```
+
+::: callout-tip
+#### My answer
+
+When trial is included as a covariate, the change in pupil size per unit change of cognitive load is `r round(mean(as_draws_df(fit_pupil)$b_c_load),2)`, with 95% CrI \[`r round(quantile(as_draws_df(fit_pupil)$b_c_load, c(.025,.975)),2)`\]. The change with an increase of one trial is `r round(mean(as_draws_df(fit_pupil)$b_c_trial),2)`, with 95% CrI \[`r round(quantile(as_draws_df(fit_pupil)$b_c_trial, c(.025,.975)),2)`\], indicating that the with an increase in trial number (longer into the experiment), pupil size decreased. There was not a large change in the effect of cognitive load compared to the model fit that did not include trial.
+:::
+
+## Exercise 4.3 - Log-normal model: Revisiting the effect of trial on finger tapping times
+
+*We continue considering the effect of trial on finger tapping times.*
+
+*a. Estimate the slowdown in milliseconds between the last two times the subject pressed the space bar in the experiment.* *b. How would you change your model (keeping the log-normal likelihood) so that it includes centered log-transformed trial numbers or square-root-transformed trial numbers (instead of centered trial numbers)? Does the effect in milliseconds change?*
+
+### My work
+
+Load data and centre predictor.
+
+```{r}
+df_spacebar <- df_spacebar %>%
+  mutate(c_trial = trial - mean(trial)) %>%
+  rename(rt = t)
+```
+
+Re-run `fit_press_trial` model.
+
+```{r}
+fit_press_trial <- brm(rt ~ 1 + c_trial,
+  data = df_spacebar,
+  family = lognormal(),
+  prior = c(
+    prior(normal(6, 1.5), class = Intercept),
+    prior(normal(0, 1), class = sigma),
+    prior(normal(0, .01), class = b, coef = c_trial)
+  )
+)
+```
+
+#### a. Last two trials
+
+Find difference in estimates between $trial_n$ and $trial_{n-1}$
+
+```{r}
+alpha_samples <- as_draws_df(fit_press_trial)$b_Intercept
+beta_samples <- as_draws_df(fit_press_trial)$b_c_trial
+last_trial <- df_spacebar$c_trial %>% max()
+effect_end_ms <- exp(alpha_samples + last_trial * beta_samples) -
+exp(alpha_samples + (last_trial - 1) * beta_samples)
+c(mean = mean(effect_end_ms), quantile(effect_end_ms, c(.025, .975)))
+```
+
+::: callout-tip
+#### My answer
+
+The estimated slowdown (in milliseconds) between the last two trials is `r round(mean(effect_end_ms),3)`ms \[95% CrI: `r round(quantile(effect_end_ms, .025),2)`,`r round(quantile(effect_end_ms, .975),2)`\].
+:::
+
+#### b. centered log-transformed or square-root-transformed trial numbers
+
+Create new predictors
+
+```{r}
+df_spacebar <- df_spacebar %>%
+  mutate(
+    c_log_trial = log(trial) - mean(log(trial)),
+    c_sqrt_trial = sqrt(trial) - mean(sqrt(trial))
+  )
+```
+
+Fit model with centred log trial.
+
+```{r}
+fit_press_log_trial <- brm(
+  rt ~ 1 + c_log_trial,
+  data = df_spacebar,
+  family = lognormal(),
+  prior = c(
+    prior(normal(6, 1.5), class = Intercept),
+    prior(normal(0, 1), class = sigma),
+    prior(normal(0, 1), class = b, coef = c_log_trial)
+  )
+)
+```
+
+What's the difference between the first 2, middle 2, and last 2 trials?
+
+```{r}
+alpha_samples <- as_draws_df(fit_press_log_trial)$b_Intercept
+beta_samples <- as_draws_df(fit_press_log_trial)$b_c_log_trial
+
+# first trials
+first_trial <- df_spacebar$c_trial %>% min()
+effect_first_log_trial_ms <- exp(alpha_samples + first_trial * beta_samples) -
+exp(alpha_samples + (first_trial + 1) * beta_samples)
+c(mean = mean(effect_first_log_trial_ms), quantile(effect_first_log_trial_ms, c(.025, .975)))
+
+# middle-1 and middle trial
+middle_log <- df_spacebar %>%
+filter(c_trial == 0) %>%
+pull(c_log_trial)
+## in base R this would be <- df_spacebar[c_trial == 0]$c_log_trial
+middle_m1_log <- df_spacebar %>%
+filter(c_trial == -1) %>%
+pull(c_log_trial)
+# effect?
+effect_middle_log_trial_ms <- exp(alpha_samples + middle_log * beta_samples) -
+exp(alpha_samples + middle_m1_log * beta_samples)
+c(mean = mean(effect_middle_log_trial_ms), quantile(effect_middle_log_trial_ms, c(.025, .975)))
+
+# last trial 
+last_trial <- df_spacebar$c_trial %>% max()
+effect_end_log_trial_ms <- exp(alpha_samples + last_trial * beta_samples) -
+exp(alpha_samples + (last_trial - 1) * beta_samples)
+c(mean = mean(effect_end_log_trial_ms), quantile(effect_end_log_trial_ms, c(.025, .975)))
+```
+
+Fit model with centred squareroot trial.
+
+```{r}
+fit_press_sqrt_trial <- brm(
+  rt ~ 1 + c_sqrt_trial,
+  data = df_spacebar,
+  family = lognormal(),
+  prior = c(
+    prior(normal(6, 1.5), class = Intercept),
+    prior(normal(0, 1), class = sigma),
+    prior(normal(0, 1), class = b, coef = c_sqrt_trial)
+  )
+)
+```
+
+What's the difference between the first 2, middle 2, and last 2 trials?
+
+```{r}
+alpha_samples <- as_draws_df(fit_press_sqrt_trial)$b_Intercept
+beta_samples <- as_draws_df(fit_press_sqrt_trial)$b_c_sqrt_trial
+
+# first trials
+first_trial <- df_spacebar$c_trial %>% min()
+effect_first_sqrt_trial_ms <- exp(alpha_samples + first_trial * beta_samples) -
+exp(alpha_samples + (first_trial + 1) * beta_samples)
+c(mean = mean(effect_first_sqrt_trial_ms), quantile(effect_first_sqrt_trial_ms, c(.025, .975)))
+
+# middle-1 and middle trial
+middle_sqrt <- df_spacebar %>%
+filter(c_trial == 0) %>%
+pull(c_sqrt_trial)
+## in base R this would be <- df_spacebar[c_trial == 0]$c_sqrt_trial
+middle_m1_sqrt <- df_spacebar %>%
+filter(c_trial == -1) %>%
+pull(c_sqrt_trial)
+# effect?
+effect_middle_sqrt_trial_ms <- exp(alpha_samples + middle_sqrt * beta_samples) -
+exp(alpha_samples + middle_m1_sqrt * beta_samples)
+c(mean = mean(effect_middle_sqrt_trial_ms), quantile(effect_middle_sqrt_trial_ms, c(.025, .975)))
+
+# last trial 
+last_trial <- df_spacebar$c_trial %>% max()
+effect_end_sqrt_trial_ms <- exp(alpha_samples + last_trial * beta_samples) -
+exp(alpha_samples + (last_trial - 1) * beta_samples)
+c(mean = mean(effect_end_sqrt_trial_ms), quantile(effect_end_sqrt_trial_ms, c(.025, .975)))
+```
+
+What's the difference between the first 2 and middle 2 trials without transforming trial?
+
+```{r}
+alpha_samples <- as_draws_df(fit_press_trial)$b_Intercept
+beta_samples <- as_draws_df(fit_press_trial)$b_c_trial
+
+# first trials
+first_trial <- df_spacebar$c_trial %>% min()
+effect_first_trial_ms <- exp(alpha_samples + first_trial * beta_samples) -
+exp(alpha_samples + (first_trial + 1) * beta_samples)
+c(mean = mean(effect_first_trial_ms), quantile(effect_first_trial_ms, c(.025, .975)))
+
+# middle-1 and middle trial
+middle <- df_spacebar %>%
+filter(c_trial == 0) %>%
+pull(c_trial)
+## in base R this would be <- df_spacebar[c_trial == 0]$c_sqrt_trial
+middle_m1 <- df_spacebar %>%
+filter(c_trial == -1) %>%
+pull(c_trial)
+# effect?
+effect_middle_trial_ms <- exp(alpha_samples + middle * beta_samples) -
+exp(alpha_samples + middle_m1 * beta_samples)
+c(mean = mean(effect_middle_trial_ms), quantile(effect_middle_trial_ms, c(.025, .975)))
+
+# last trial 
+last_trial <- df_spacebar$c_trial %>% max()
+effect_end_trial_ms <- exp(alpha_samples + last_trial * beta_samples) -
+exp(alpha_samples + (last_trial - 1) * beta_samples)
+c(mean = mean(effect_end_trial_ms), quantile(effect_end_trial_ms, c(.025, .975)))
+```
+
+::: callout-tip
+#### My answer
+
+The effect does seem to differ as a function of the nonlinear transoformation of the predictor. This is particularly true at the first two and last two trials. There is not much change in the effect estimate for the middle trials.
+
+| IV        | first two                                     | middle two                                     | last two                                    |
+|---------|--------------------|---------------------------|----------------------------|
+| trial       | `r round(mean(effect_first_trial_ms),3)`            | `r round(mean(effect_middle_trial_ms),3)` | `r round(mean(effect_end_trial_ms),3)`            |
+| log(trial)  | `r round(mean(effect_first_log_trial_ms),3)`  | `r round(mean(effect_middle_log_trial_ms),3)`  | `r round(mean(effect_end_log_trial_ms),3)`  |
+| sqrt(trial) | `r round(mean(effect_first_sqrt_trial_ms),3)` | `r round(mean(effect_middle_sqrt_trial_ms),3)` | `r round(mean(effect_end_sqrt_trial_ms),3)` |
+:::
+
+## Exercise 4.4 - Logistic regression: Revisiting the effect of set size on free recall.
+
+Our data set includes also a column coded as tested that indicates the position of the queued word. (In Figure 4.13 tested would be 3). Could it be that position also has an effect on recall accuracy? How would you incorporate this in the model? (We indicate another main effect with a `+` sign).
+
+## Exercise 4.5 - Red is the sexiest color
+
+Load the following data set:
+
+```{r}
+data("df_red")
+head(df_red)
+```
+
+The data set is from a study (Beall and Tracy 2013) that contains information about the color of the clothing worn (red, pink, or red or pink) when the subject (female) is at risk of becoming pregnant (is ovulating, self-reported). The broader issue being investigated is whether women wear red more often when they are ovulating (in order to attract a mate). Using logistic regressions, fit three different models to investigate whether being ovulating increases the probability of wearing (a) red, (b) pink, or (c) either pink or red. Use priors that are reasonable (in your opinion).

@@ -1,0 +1,1040 @@
+---
+title: "Ch. 4"
+---
+
+# Set up {-}
+
+```{r, results = "hide", warning=F,message=F,error=F}
+# set global knit options
+knitr::opts_chunk$set(echo = T, # print chunks?
+                      eval = T, # run chunks?
+                      error = F, # print errors?
+                      warning = F, # print warnings?
+                      message = F, # print messages?
+                      cache = T # cache?; be careful with this!
+                      )
+
+# suppress scientific notation
+options(scipen=999)
+
+# play a sound if error encountered
+options(error = function() {beepr::beep(9)})
+
+# load packages
+## create list of package names
+packages <- c( #"SIN", # this package was removed from the CRAN repository
+               "MASS", "dplyr", "tidyr", "purrr", "extraDistr", "ggplot2", "loo", "bridgesampling", "brms", "bayesplot", "tictoc", "hypr", "bcogsci", "papaja", "grid", "kableExtra", "gridExtra", "lme4", "cowplot", "pdftools", "cmdstanr", "rootSolve", "rstan"
+  )
+
+# NB: if you haven't already installed bcogsci through devtools, it won't be loaded
+## Now load or install & load all
+package.check <- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      install.packages(x, dependencies = TRUE)
+      library(x, character.only = TRUE)
+    }
+  }
+)
+
+# this is also required, taken from the textbook
+
+## Save compiled models:
+rstan_options(auto_write = FALSE)
+## Parallelize the chains using all the cores:
+options(mc.cores = parallel::detectCores())
+# To solve some conflicts between packages
+select <- dplyr::select
+extract <- rstan::extract
+```
+
+
+# Chapter 4 - Bayesian regression models
+
+- regression tells us how our *dependent variable* (response/outcome variable; e.g., pupil size, response times, accuracy, etc.) is affected by one or many *independent variables* (predictors/explanatory variables)
+- predictors can be categrocial (e.g., male or female), ordinal (first, second, third, etc.), or continuous (e.g., age)
+- this chapter: simple regression with different likelihood functions
+
+## A first linear regression: Does attentional load affect pupil size?
+
+- pupil size is mostly related to the amount of light that reaches the retina or the distance to a perceived object
+  + it is *also* systematically influenced by **cognitive processing**: increased cognitive load $\rightarrow$ increase in pupil size
+  
+- we'll use data from one subject's pupil size of a control experiment in Wahn et al. (2016), *averaged by trial* (`df_pupil` data in the `bcogsci` package)
+  + the subject covertly tracks between 0-5 objects among several randomly moving on a screen (multiple object tracking (MOT) task)
+  + our goal: investigate how the number of moving objects being tracked (i.e., attentional load) affects pupil size
+  
+### Likelihood and priors
+
+- we'll model pupil size as normally distributed (we're not expecting skew, and have no further information available about the distribution of pupil sizes)
+  + we know this isn't exactly right, given the units used here in which pipil sizes cannot equal 0 or be negative
+- for simplicity's sake, let's assume a linear relationship between load and pupil size
+
+Our assumptions:
+1. There is some average pupil size, $\alpha$
+2. the increase of attentional load has a linear relationship with pupil size, $\beta$
+3. There is some noise in this process (variability around true pupil size), represented by the scale $\sigma$
+
+- the generative probability density function will be:
+
+$$
+p\_size_n \sim \mathit{Normal}(\alpha + c\_load_n \cdot \beta,\sigma)
+$$
+- this translates to the `brms` formula:
+
+```{r, eval = F}
+p_size ~ 1 + c_load
+```
+
+- where `1` represents the intercept, $\alpha$, which doesn't depend on the predictor
+- `c_load` is the predictor that is multiplied by $\beta$
+  + the prefix `c_`will be used to indicate a predictor is *centred* (the mean of all the values is subtracted from each value)
+  + with load centred, the intercept represents the pupil size at the *average load* in the expeirment (because at the average load, the centered load is zero, yielding $\alpha + 0 \cdot\beta$) 
+  + if the load had *not* been centered, then the intercept would represent the pupil size when there is no load
+
+- we could fit a frequentist model simply with `lm(p_size ~ 1 + c_load, data)`, but for a Bayesian model we have to specify priors for each of the parameters
+
+- to set plausible priors, some research into info on pupil sizes needs to first be done
+  + e.g., we may know pupil diameters range between 2 to 4mm in bright light to 4-8mm in the dark, this experiment was run with the Eyelink-II eyetracker which uses arbitrary units
+  + we need to first know something about measures of pupil sizes (assuming this is our first experiment with such data)
+  + luckily we have some *pilot data*, which will tell us something about the order of magnitude of our dependent variable
+      + importantly: the pilot data presented no attentional load for the first 100 ms, measured every 10 ms
+
+```{r}
+data("df_pupil_pilot")
+df_pupil_pilot$p_size %>% summary()
+```
+
+- we can now set a regularizing prior for $\alpha$:
+  + center the prior around 1000 to be in the right order of magnitude
+  + since we don't know much yet about pupil size variation by load, we should include a rather wide prior by defining it as a normal distribution and setting its standard deviation as 500
+  
+$$
+\alpha \sim Normal(1000, 500)
+$$
+- our predictor load is centered, so with the prior for $\alpha$ we are saying that we suspect that the average pupil size for the average load int he experiment will be in a 95\% CrI of approximately $1000 \pm (2\times500) = [0, 2000]$
+  + or, more precisely:
+
+```{r}
+round(
+  qnorm(c(.025,.975), mean = 1000, sd = 500),
+  0)
+```
+
+- since the measurements of the pilot data are strongly correlated because they were taken 10 milliseconds apart; so they won't give realistic estimate of variation in pupil size
+  + so, set up an uninformative prior for $\sigma$ that encodes this lack of precise information: $\sigma$ is surely longer than zero, and has to be in the order of magnitude of the pupil size with no load
+  
+$$
+\sigma \sim Normal_+(0, 1000)
+$$
+- so we are saying that we expect that the standard deviation of the pupil sizes should be in the following 95\% CrI:
+
+```{r}
+qtnorm(c(.025,.975), 
+       mean = 0, 
+       sd = 1000, 
+       a = 0 # truncate at 0
+       )
+```
+
+- reminder: the mean of $Normal_+$ does not coincide with its location indicated with $\mu$
+  + neither does the standard deviation coincide with the scale $\sigma$
+  
+```{r}
+samples <- rtnorm(20000, 
+                  mean = 0, # mean of Normal_+ distri
+                  sd = 1000,  # sd of Normal_+ distri
+                  a = 0) # truncate at 0
+c(mean = mean(samples), # sample mean
+  sd = sd(samples)) # sample sd
+```
+  
+- still need the prior for $\beta$, i.e., the change in pupil size produced by attentional load
+  + since these changes in pupil size usually aren't perceptible in day-to-day life, they should be much smaller than the pupil size (which we assume ahs a mean of 1000 units), so:
+  
+$$
+\beta \sim Normal(0,100)
+$$
+
+- so we are saying we don't really know if the attentional load will increase or decrease the pupil size (it's centered at 0)
+  + but we do know one unit of load will potentially change the pupil size in a way that is consistent with the following 95% CrI:
+  
+```{r}
+round(qnorm(c(.025,.975),
+      mean = 0,
+      sd = 100),0)
+```
+  
+- so, we don't expect changes in size that increase or decrease the pupil size more than 200 units for one unit increase in load
+
+- these priors are relatively uninformative, if we had more previous knowledge about pupil size variation we could have more principled priors
+
+:::{.callout-tip}
+## Sidebar: Truncated distributions
+
+- looks intense
+:::
+
+### The `brms` model
+
+- before fittings the `brms` model, load the data and center the predictor
+
+```{r}
+data("df_pupil")
+(df_pupil <- df_pupil %>%
+    mutate(c_load = load - mean(load)) # centre
+  )
+```
+
+- fit the brms model:
+
+```{r}
+fit_pupil <- brm(p_size ~ 1 + c_load,
+                 data = df_pupil,
+                 family = gaussian(),
+                 prior = c(
+                   prior(normal(1000,500), class = Intercept),
+                   prior(normal(0,1000), class = sigma),
+                   prior(normal(0,100), 
+                         class = b, coef = c_load) # predictor prior
+                 )
+                 )
+```
+
+- if we want to set the same prior for different predictors, we can omit `coef = ...`
+- the priors are normal distribution for the intercept ($\alpha$) and the slope ($\beta$), and a truncated normal distribution for the scale parameter $\sigma$, which coincides with the standard deviation (because the likelihood is a normal distribution)
+
+- inspect the output of the model:
+
+```{r}
+plot(fit_pupil)
+```
+
+```{r}
+fit_pupil
+```
+
+:::{.callout-tip}
+## Sidebar: Intercepts in `brms`
+
+- when setting up a prior for the intercept in `brms`, we actually set a prior for an intercept assuming that all predictors are centered
+  + if predictors are *not8 cnetered, there is a mismatch between the interpretation of the intercept as returned in the output and the interpretation of the intercept with respect to its prior specification
+:::
+
+### How to communicate the results
+
+- our research question was "What is the effect of attentional load on the subject's pupil size?"
+  + we need to examine what happens with the posterior distribution of $\beta$, which is printed out as `c_load` in the model summary, and is `r round(mean(as_draws_df(fit_pupil)$b_c_load),2)`
+
+```{r}
+# beta of c_load
+round(
+  as_draws_df(fit_pupil)$b_c_load %>% 
+  mean(),
+  2)
+
+# 95% CrI
+c(quantile(as_draws_df(fit_pupil)$b_c_load,
+           probs = c(.025, .975)))
+```
+
+- the model tells us that as attentional load increases, pupil size increases
+  + to determine how likely it is that the pupil size increased rather than decreased, we can examine the proportion of samples above zero
+  
+```{r}
+# proportion of cases where the effect occured and was positive
+mean(as_draws_df(fit_pupil)$b_c_load > 0)
+```
+  
+- this high probability does not mean the effect of load is non-zero
+  + rather, it's much more likely that the effect is positive rather than negative
+  + to claim the effect is likely to be non-zero, we'd have to compare the model with an alternative model in which the model assumes that the efefct of load is 0 (more on this in chapter 14)
+
+### Descriptive adequacy
+
+- our model converged and we obtained a posterior distribution
+- however there is no guarantee that our model is good enough to represent our data! So let's run some posterior predictive checks
+  + it can be useful to customise the PPC to visualise the fit of the model
+  
+```{r}
+for (l in 0:4) { # for the cognitive load levels 0:4
+  df_sub_pupil <- filter(df_pupil, load == l) # filter out other loads
+  d <- pp_check(fit_pupil, # run pp_check
+    type = "dens_overlay",
+    ndraws = 100,
+    newdata = df_sub_pupil # using this new data with filtering
+  ) +
+    # and plot it
+    geom_point(data = df_sub_pupil, aes(x = p_size, y = 0.0001)) +
+    ggtitle(paste("load: ", l)) +
+    coord_cartesian(xlim = c(400, 1000))
+  # print(p)
+  name <- paste0("dens_",l)
+  assign(name, d)
+}
+```
+
+```{r}
+ggpubr::ggarrange(
+  dens_0 + theme(legend.position = "none"),
+  dens_1 + theme(legend.position = "none"),
+  dens_2 + theme(legend.position = "none"),
+  dens_3 + theme(legend.position = "none"),
+  dens_4 + theme(legend.position = "none"),
+  cowplot::get_legend(dens_4),
+  nrow=2, ncol = 3)
+```
+
+- we don't have enough data to make any strong claims; both the predictive distributions and our data are pretty wide spread, and it's hard to tell if the distribution of the observations could've been generated by our model
+  + for now let's say it doesn't look so bad
+
+- let's look instead at the distribution of summary statistics
+
+```{r}
+  for (l in 0:4) {
+  df_sub_pupil <- filter(df_pupil, load == l)
+  p <- pp_check(fit_pupil,
+    type = "stat",
+    ndraws = 1000,
+    newdata = df_sub_pupil,
+    stat = "mean"
+  ) +
+    geom_point(data = df_sub_pupil, aes(x = p_size, y = 0.1)) +
+    ggtitle(paste("load: ", l)) +
+    coord_cartesian(xlim = c(400, 1000))
+  # print(p)
+  # and store object as p_l
+  name <- paste0("p_",l)
+  assign(name, p)
+  }
+```
+
+```{r}
+ggpubr::ggarrange(
+  p_0 + theme(legend.position = "none"),
+  p_1 + theme(legend.position = "none"),
+  p_2 + theme(legend.position = "none"),
+  p_3 + theme(legend.position = "none"),
+  p_4 + theme(legend.position = "none"),
+  cowplot::get_legend(p_4),
+  nrow=2, ncol = 3)
+```
+
+- the observed means for no load and for load = 1 are falling in the tails of the distribution of means
+  + the data may be indicating the relevant difference is simply between no load and some load: the likelihood (the dark line) doesn't move much between load = 1:4 (is about 700-740), but is much lower for load=0 (about 550)
+  + but given the uncertainty in the posterior predictive distributions and that in the observed means are contained somewhere int he predicted distributions, we could just be overinterpreting noise
+  
+## Log-normal model: Does trial affect finger tapping times?
+
+- let's revisit the small example from Ch. 3 with the spacebar-pressing times
+  + suppose we want ot know whether the subject tended to speed up (a practice effect) or slow down (a fatigue/boredome effect)
+  + let's load the data, and centere the column `trial`
+
+```{r}
+df_spacebar <- df_spacebar %>%
+  mutate(c_trial = trial - mean(trial))
+```
+
+### Likelihood and priors for the log-normal model
+
+- if we assume a log-normal distribution of tapping times, the likelihood becomes:
+
+$$
+t_n \sim LogNormal(\alpha + c_trial_n \cdot \beta,\sigma)
+$$
+
+- where $n = 1,...,N$ and $t$ is the dependent variable (finger tapping times in milliseconds)
+  + $N$ is the total number of data points
+- same priors as before for $\alpha$ (which is equivalent to $\mu$ in the previous model) and for $\sigma$
+
+$$
+\begin{align}
+\alpha &\sim Normal(6,1.5)\\
+\sigma &\sim Normal(0,1)
+\end{align}
+$$
+
+- what about a prior for $\beta$?
+  + effects are *multiplicative* rather than additive when assuming a log-normal likelihood, meaning we need to take into account $\alpha$ in order to interpret \$beta$
+- let's generate some prior predictive distributions to try to understand how our priors interact
+  + start with the following prior centred on zero, a prior agnostic regarding the direction of the effect, which allows for a slowdown ($\beta$ > 0) and a speedup ($\beta$ < 0)
+  
+$$
+\beta \sim Normal(0,1)  
+$$
+
+- our first attempt at a prior predictive distribution:
+
+```{r}
+# Ignore the dependent variable,
+# use a vector of ones a placeholder.
+df_spacebar_ref <- df_spacebar %>%
+  mutate(t = rep(1, n()))
+fit_prior_press_trial <- brm(t ~ 1 + c_trial,
+  data = df_spacebar_ref,
+  family = lognormal(),
+  prior = c(
+    prior(normal(6, 1.5), class = Intercept),
+    prior(normal(0, 1), class = sigma),
+    prior(normal(0, 1), class = b, coef = c_trial)
+  ),
+  sample_prior = "only", # PRIOR PRED DISTR
+  control = list(adapt_delta = .9)
+)
+```
+
+- to understand the type of data we are *assuming* a priori with the prior of parameter $\beta$, let's plot the median difference between the finger tapping times at adjacent trials
+  + as the prior of $\beta$ gets wider, larger differences are observed between adjacent trials
+- the objective of the prior predictive check is to calibrate the prior of $\beta$ to obtain a plausible range of differences
+  + let's plot the distribution of medians because they are less affected by teh variance in the prior predicted distribution than the distribution of mean differences; there'll be more spread for means (the mean of log-normal distributed values depends on both the location, $\mu$, and scale, $\sigma$, of the distribution)
+
+- first, define a function that calculates the difference between adjacent trials, then apply this to the results in `pp_check`
+  + as expected, the median effect is centered on zero (as is our prior), but we see that the distribution of possible medians for the effect is too widely spread out and includes extreme values
+  
+```{r}
+# calculate median
+median_diff <- function(x) {
+  median(x - lag(x), na.rm = TRUE)
+}
+# plot pp_check for priors
+pp_check(fit_prior_press_trial,
+         type = "stat",
+         stat = "median_diff",
+  # show only prior predictive distributions       
+         prefix = "ppd",
+  # each bin has a width of 500ms       
+         binwidth = 500) +
+  # cut the top of the plot to improve its scale
+  coord_cartesian(ylim = c(0, 50))
+```
+
+- try again with the prior $\beta \sim Normal(0,0.01)$
+  + this prior predictive distribution still looks quite vague, but is at least in the right order of magnitude
+
+```{r}
+# Ignore the dependent variable,
+# use a vector of ones a placeholder.
+df_spacebar_ref <- df_spacebar %>%
+  mutate(t = rep(1, n()))
+fit_prior_press_trial <- brm(t ~ 1 + c_trial,
+  data = df_spacebar_ref,
+  family = lognormal(),
+  prior = c(
+    prior(normal(6, 1.5), class = Intercept),
+    prior(normal(0, 1), class = sigma),
+    prior(normal(0, .01), class = b, coef = c_trial) # change to 0,.01
+  ),
+  sample_prior = "only", # PRIOR PRED DISTR
+  control = list(adapt_delta = .9)
+)
+
+# calculate median
+median_diff <- function(x) {
+  median(x - lag(x), na.rm = TRUE)
+}
+# plot pp_check for priors
+pp_check(fit_prior_press_trial,
+         type = "stat",
+         stat = "median_diff",
+  # show only prior predictive distributions       
+         prefix = "ppd",
+  # each bin has a width of 500ms       
+         binwidth = 500) +
+  # cut the top of the plot to improve its scale
+  coord_cartesian(ylim = c(0, 50))
+```
+
+- prior selection is a lot of work, but is usually only done the first time using a certain experimental design
+  + and likelihood estimates from frequentist models can be useful too
+  + when in doubt, a sensitivity analysis is helpful to determine whether the posterior distribution depends too strongly on our prior
+  
+### The `brms` model
+
+- let's stick to the priors we've set, and fit the model of the effect of trial using `brms`
+  + we need to specify the family is `lognormal()`
+  
+```{r}
+fit_press_trial <- brm(rt ~ 1 + c_trial,
+  data = df_spacebar,
+  family = lognormal(),
+  prior = c(
+    prior(normal(6, 1.5), class = Intercept),
+    prior(normal(0, 1), class = sigma),
+    prior(normal(0, .01), class = b, coef = c_trial)
+  )
+)
+```
+
+- we can look at the estimates from the posteriors for parameters $\alpha$, $\beta$, and $\sigma$
+  + N.B., these are on the log scale
+
+```{r}
+# print just the estimates (NB, log scale)
+posterior_summary(fit_press_trial,
+                  variable = c("b_Intercept",
+                               "b_c_trial",
+                               "sigma"))
+```
+
+- let's plot the **posterior** distributions
+
+```{r}
+plot(fit_press_trial)
+```
+
+```{r}
+# layered density plots
+pp_check(fit_press_trial, # model
+         ndraws = 100, # n of predicted data sets
+         type = "dens_overlay" # plot type
+         ) +
+  theme_bw()
+```
+
+### How toc ommunicate the results
+
+- the first step is to summarize the posteriors in a table or graphically (or both)
+  + if the research relates to the effect estimated by the model, the posterior of $\beta$ can be summarised as: $\hat\beta$ = 0.00052, 95\% = [0.0004, 0.00065].
+  
+- the effect is easier to interpret in milliseconds, so we can back-transform it from the log scale
+  + *but* we need to take into account that the scale is not linear, and that the effect between two button presses will differ depending on where we are in the experiment
+  
+- we will have a certain estimate if we consider the difference between RTs in a trial at the middle of the experiment (when centered trial number is 0) and the previous trial (when the centered trial number is minus 1)
+  
+```{r}
+alpha_samples <- as_draws_df(fit_press_trial)$b_Intercept
+beta_samples <- as_draws_df(fit_press_trial)$b_c_trial
+effect_middle_ms <- exp(alpha_samples) -
+  exp(alpha_samples - 1 * beta_samples)
+
+## ms effect in the middle of the expt
+## (mean trial vs. mean trial - 1)
+c(mean = mean(effect_middle_ms),
+  quantile(effect_middle_ms, c(0.025, 0.975)))
+```
+
+- we will obtain different estimates if we consider the difference between the second and the first trial:
+
+```{r}
+first_trial <- min(df_spacebar$c_trial) # grab number of first trial
+second_trial <- min(df_spacebar$c_trial) + 1 # and the number of the first+1 trial (2nd trial)
+effect_beginning_ms <-
+  exp(alpha_samples + second_trial * beta_samples) -
+  exp(alpha_samples + first_trial * beta_samples)
+## ms effect from first to second trial:
+c(mean = mean(effect_beginning_ms),
+  quantile(effect_beginning_ms, c(0.025, 0.975)))
+```
+
+- so far we've obtained ***median*** effects (using `exp()`)
+  + if we want ***mean*** effects we need to take $\sigma$ into account, since we need to calculate $\exp(\cdot + \sigma^2/2)$
+  + luckily we can just use the built-in function `fitted()` which calculates means
+  
+- first: define for which observations we want to obtain the fitted values *in milliseconds*
+  + we're interested in the 1st and 2nd trials, so create a new data frame with their centred versions
+
+```{r}
+newdata_1 <- data.frame(c_trial = c(first_trial, second_trial))
+```
+
+- now, use `fitted()` on the `brms object`, including the new data, and set `summary` parameter to `FALSE`
+  + first column contains the posterior samples transformed into milliseconds of the first tiral, and the 2nd column for the 2nd trial
+  
+```{r}
+beginning <- fitted(fit_press_trial,
+                 newdata = newdata_1,
+                 summary = FALSE)
+head(beginning, 3)
+```
+
+- last, calculate the difference between trials and report mean and 95\% quantiles
+
+```{r}
+# calculate *differences* (i.e., effect) between the first 2 trial means
+effect_beginning_ms <- beginning[, 2] - beginning[,1]
+c(mean = mean(effect_beginning_ms),
+  quantile(effect_beginning_ms, c(0.025, 0.975)))
+```
+
+- since $\sigma$ is much smaller than $\mu$, $\sigma$ doesn't have a large influence on the mean effects, and the mean and 95\% CrI of the mean and median effects are quite similar
+
+- we see that no matter how we calculate the trial effect there is a *slow down* (estimates are positive)
+- when reporting results, present the posterior mean and a CrI and reason about whether the obsrved estimates are consistent with the preiction from the theory being investigated
+
+- the practical relevance of the effect for the RQ can be important too
+  + e.g., we only see a barely noticeable slowdown after 100 button presses:
+  
+```{r}
+effect_100 <-
+  exp(alpha_samples + 100 * beta_samples) -
+  exp(alpha_samples)
+c(mean = mean(effect_100),
+  quantile(effect_100, c(0.025, 0.975)))
+```
+
+- we need to consider: does our uncertainty of this estimate, and the estimated mean effect, have any scientific relevance?
+  + considering previous lit, predictions from a quantitative model, other experiment domain knowledge
+  
+- sometimes we're only interested in establishing whether an effect is present or absent
+  + the magnitude and uncertainty in these instances are of secondary interest
+  + here the goal is to argue that there is evidence of a slow down
+  + in *NHST*, a likelihood ratio test is the standard way to argue for evidence of an effect
+  + in *Bayesian data analysis*, we need to carry out **Bayes factor analysis** (see chapters 14-16)
+  
+### Descriptive adequacy
+
+- let's now look at the predictions of the model
+  + we know trial effects are very small, so let's example predictions of the model for differences in RTs between 100 button presses
+- define a function, `median_diff100()`, that calculates the median difference between a trial $n$ and a trial $n + 100$
+  + we'll compare the observed median difference against the range of predicted differences based on the model and the data, rather than only the model as we did for our prior predictions
+  
+```{r}
+median_diff100 <- function(x) median(x - lag(x, 100), na.rm = TRUE)
+pp_check(fit_press_trial,
+         type = "stat",
+         stat = "median_diff100")
+```
+
+- from this, we can conclude that model predictions for differences in response times between trials are reasonable (0 is in the outer tail)
+
+## Logistic regression: does set size affect free recall?
+
+- *generalised* linear models (GLMs) are the bread and butter for many researchers
+  + we will focus on one special case of GLMs that has wide applciation: logistic regression
+
+- example data set: a study investigating the capacity level of working memory
+  + data are a subset of data from Oberauer (2019)
+  + each participant presented word lists of varying lengths (2, 4, 6, or 8 elements)
+  + asked to recall a word given its position on the list
+    - we will focus on the data from on participant
+    
+- it is well-established that there is a negative correlation of number of items held in WM and performance (i.e., accuracy)
+  + we'll investigate this claim
+- load the data (`df_recall`) and centre the predictor (`set_size`)
+  
+```{r}
+# load data
+data("df_recall")
+
+# centre set size
+df_recall <- df_recall %>%
+  mutate(c_set_size = set_size - mean(set_size))
+
+# set sizes in the data set:
+df_recall$set_size %>%
+  unique() %>% sort()
+# and now the centred predictor values:
+df_recall$c_set_size %>%
+  unique() %>% sort()
+
+# trials by set size
+df_recall %>%
+  group_by(set_size) %>%
+  count()
+
+# check out all variables
+df_recall %>%
+  head()
+```
+
+- the column `correct` records the incorrect vs. correct responses with `0` vs. `1`
+- the column `c_set_size` records the centred memory set size
+- we want to model the trial-by-trial accuracy and examine whether the probability of recalling a word is related to the # of words int he set that the subject needs to remember
+
+### The likelihood for logistic regression model
+
+- recall: Bernoulli likelihood generates a 0 or 1 response with a particular probability $\theta$
+  + one can generate simualted data for 10 trials, with a 50% probability  of getting a 1:
+  
+```{r}
+rbern(10, prob = 0.5)
+```
+
+- so, we can define each dependent value `correct_n` in the data as being generated from a Bernoulli random variable with the probability of $\theta_n$, where:
+  + `n = 1,...,N` indexes the trial
+  + $correct_n$ is the dependent variable (0 indicates an incorrect recall, 1 a correct recall)
+  + $theta_n$ is the probability of correctly recalling a probe in a given trial $n$
+  
+$$
+correct_n \sim Bernoulli(\theta_n)
+\tag{4.10}
+$$
+
+- $\theta_n$ is a probability, and as such bounded to be between 0 and 1, so we cannot just fit a regresion model using the normal (or log-normal) likelihood
+  + such a model would assume that the data range from $-\infty$ to $+\infty$ (or $0$ to $+\infty$, as truncated cases), this is not appropriate because we can only have 0's and 1's
+  
+- the GLM framework solves this by defining a *link function* $g(\cdot)$ that connects the linear model to the quantity to be estimated (here, the probabilities $\theta_n$)
+  + the link function used for 0,1 responses is called the ***logit link***, and is defined as:
+  
+$$
+\eta_n = g(\theta_n) = \log\left(\frac{\theta_n}{1-\theta_n}\right)
+$$
+
+- the term $\frac{\theta_n}{1-\theta_n}$ is called the ***odds***
+  _ the logit link function is therefore a ***log-odds***; it maps probability values ranging from [0,1] to real numbers ranging from $-\infty$ to $+\infty$
+  + the logit link function, $\eta = g(\theta)$, and the inverse logit $\theta = g^{-1}(\eta)$, known as the *logistic function*, are shown below
+  
+```{r}
+#| fig-height: 4
+#| label: fig-logit
+x <- seq(0.001, 0.999, by = 0.001)
+y <- log(x / (1 - x))
+logistic_dat <- data.frame(theta = x, eta = y)
+
+p1 <- qplot(logistic_dat$theta, logistic_dat$eta, geom = "line") + xlab(expression(theta)) + ylab(expression(eta)) + ggtitle("The logit link") +
+  annotate("text",
+    x = 0.3, y = 4,
+    label = expression(paste(eta, "=", g(theta))), parse = TRUE, size = 8
+  ) + theme_bw()
+
+
+p2 <- qplot(logistic_dat$eta, logistic_dat$theta, geom = "line") + xlab(expression(eta)) + ylab(expression(theta)) + ggtitle("The inverse logit link (logistic)") + annotate("text",
+  x = -3.5, y = 0.80,
+  label = expression(paste(theta, "=", g^-1, (eta))), parse = TRUE, size = 8
+) + theme_bw()
+
+ggpubr::ggarrange(p1, p2, ncol = 2, labels = c("A", "B"))
+```
+
+- the linear model is now fit not to the 0,1 responses as the dependent variable, but to $\eta_n$, i.e., the *log-odds*, as the dependent variable:
+
+$$
+\eta_n = log(\frac{\theta_n}{1 - \theta_n}) = \alpha + \beta \cdot c\_set\_size
+$$
+
+- unlike linear modes, the model is defined without residual error terms ($\epsilon$)
+  + once $\eta_n$ is estimated, one can solve for the above equation for $\theta_n$ (i.e. we compute the inverse of the logit function and obtain estimates ont he probability scale)
+  + this gives the above-mentioned logistic regression function:
+  
+$$
+\theta_n = g^{-1}(\eta_n) = \frac{exp(\eta_n)}{1 + exp(\eta_n)} = \frac{1}{1 + exp(-\eta_n)}
+$$
+
+- the last equality in the equation above arises by dividing both the numerator and denominator by $exp(\eta_n)$
+
+- to sum up, the generalised linear model with the logit link fits the following Bernoulli likelihood:
+
+$$
+correct_n \sim Bernoulli(\theta_n)
+$$
+
+## Priors for the logistic regression
+
+- to decide on priors for $\alpha$ and $\beta$, we need to take into account that these parameters do not represent *probabilities* or *proportions*, but *log-odds* (the x-axis for the inverse logit link plot above)
+  + as we see in that plots, the relationship between log-odds (x-axis) and probabilities (y-axis) is not linear
+  
+- there are two functions in R that implement the logit and inverse logit functions:
+  + `qlogis(p)` for the logit function
+  + `plogis(x)` for the inverse logit or logistic function
+
+- now let's set priors for $\alpha$ and $\beta$
+  + we centred our predictor, so $\alpha$ = the log-odds of correctly recalling one word in a random position for the average set size of five (because $5 = \frac{2+4+6+8}{4}$), which was not a level in the experiment
+  + this is a case where the intercept doesn't have a clear interpretation if we leave the prediction uncetered: with non-centered set size, the intercept will be the log-odds of recalling one word in a set of *zero* words, which obviously makes no sense
+  
+- the prior for $\alpha$ will depend on how difficult the recall task is
+_ we could assume that the probability of recalling a word for an averaged set size, $\alpha$ is centered in .5 (50/50 chance) with a great deal of uncertainty
+  + the command `qlogis(.5)` tells us that .5 corresponds to 0 in log-odds space
+  
+```{r}
+qlogis(.5)
+```
+  
+- how do we include a great deal of uncertainty? If we look at plot B above of the inverse logit link, we could decide on a standard deviation of 4 in a normal distribution centered in zero:
+
+$$
+\alpha \sim Normal(0,4)
+$$
+
+- this would cover the vast majority of probabilities (because the range from -4 to +4 includes most probabilities)
+- let's plot this prior in log-odds and in probability scale by drawing random samples
+
+```{r}
+#| fig-height: 4
+samples_logodds <- tibble(alpha = rnorm(100000, 0, 4))
+samples_prob <- tibble(p = plogis(rnorm(100000, 0, 4)))
+
+ggpubr::ggarrange(
+  ggplot(samples_logodds, aes(alpha)) +
+    geom_density() +
+    labs(title = "Prior in log-odds (0,4)") +
+    theme_bw(),
+  ggplot(samples_prob, aes(p)) +
+    geom_density() +
+    labs(title = "Prior in probability (0,4)") +
+    theme_bw(),
+  nrow = 1,  ncol = 2,
+  labels = c("A","B")
+)
+```
+
+- this shows that our prior assigns more **probability maxx** to extreme probabilities of recall than to intermediate values
+  + clearly this is not what we want!
+- we could try several values for standard deviation of the prior until we find a prior that makes sense for us
+  + reducing th sd to 1.5 seems to make sense
+
+$$
+\alpha \sim Normal(0,1.5)
+$$
+
+```{r}
+#| fig-height: 4
+#| label: fig-ch4-prior1.5
+#| fig-cap: Prior for $\alpha \sim Normal(0.1/5)$ in log-odds (A) and in probability space (B)
+samples_logodds <- tibble(alpha = rnorm(100000, 0, 1.5))
+samples_prob <- tibble(p = plogis(rnorm(100000, 0, 1.5)))
+
+ggpubr::ggarrange(
+  ggplot(samples_logodds, aes(alpha)) +
+    geom_density() +
+    labs(title = "Prior in log-odds (0,1.5)") +
+    theme_bw(),
+  ggplot(samples_prob, aes(p)) +
+    geom_density() +
+    labs(title = "Prior in probability (0,1.5)") +
+    theme_bw(),
+  nrow = 1,  ncol = 2,
+  labels = c("A","B")
+)
+```
+
+- we need to decide now o the prior for $\beta$, the effect in log-odds of increasing the set size
+  + we could choose a normal distribution centered on 0, reflecting our lack of any commitment to the direction of the effect @fig-ch4-prior1.5
+  + let's test some priors:
+  
+a. $\beta \sim Normal(0,1)$
+b. $\beta \sim Normal(0,.5)$
+b. $\beta \sim Normal(0,.1)$
+b. $\beta \sim Normal(0,.01)$
+b. $\beta \sim Normal(0,.001)$
+
+- more details on how this is done is given in the box in Box 4.4
+  + normally you could run a `brms` models using `sample_prior = "only"` and then `predict()`, but the use of Stan's Hamiltonian sampler for sampling from the priors can lead to convergnce problems with uninformative priors (like we're using); a work around is to use the `r*` family of functions (e.g., `rnorm()`, `rbinom()`, etc.) with loops
+  
+  - we're going to go with the prior with a standard deviation of 0.1, meaning our priors are now:
+  
+$$
+\begin{align}
+\alpha \sim Normal(0,1.5) \\
+\beta \sim Normal(0,0.1)
+\end{align}
+$$
+
+## the `brms` model
+
+- we now have the likelihood, link function, and priors, and can fit the model using `brms`
+  + specify that the family is `bernoulli()`, and the link is `logit`
+  
+```{r}
+fit_recall <- brm(
+  correct ~ 1 + c_set_size,
+  data = df_recall,
+  family = bernoulli(link = logit),
+  prior = c(
+    prior(normal(0, 1.5), class = Intercept),
+    prior(normal(0, .1), class = b, coef = c_set_size)
+  )
+)
+```
+
+- now look at the summary of posteriors of each parameter, keeping in mind they're in log-odds
+
+```{r}
+posterior_summary(fit_recall,
+                  variable = c("b_Intercept", "b_c_set_size"))
+```
+
+- if we look at `b_c_set_size`, increasing the set size has a detrimental effect on recall (negative slope), as expected
+- plot posteriors:
+
+```{r}
+#| fig-cap: Posterior distribution of parameters in model `fit_recall`, with trace plots
+#| #| fig-cap-location: top
+plot(fit_recall)
+```
+
+- now let's see how we can report our results and what conclusions can be drawn
+
+## How to communicate the findings
+
+- this is similar to the situation with the log-normal model in the previous section
+- to describe the effect estimated by the model in log-odds space, we summarise the posterior of $\beta$ with: 
+  + $\hat\beta = -0.182, 95\% CrI = [-0.343, -0.022]$
+
+- but this is easiser to understand in proportions rather than log-odds, let's try this
+  + first, look at the average accuracy for the task:
+  
+```{r}
+alpha_samples <- as_draws_df(fit_recall)$b_Intercept # sample of intercepts
+av_accuracy <- plogis(alpha_samples)
+```
+
+- now we can compute summary stats for the intercept, i.e., average accuracy for the task at the centre of the cencred predictor (i.e., 5 elements, which wasn't an actual level...)
+
+```{r}
+round(
+  c(mean = mean(av_accuracy), quantile(av_accuracy, c(0.025, 0.975))),
+  3)
+```
+
+- like before, to transform the effect of ourm anipulation to a more interpretable scale (here: proportions), we need to take into account that:
+  + the scale is *not linear*, and 
+  + the effect of increasing the set size depends on the average accuracy, and the set size that we start from
+
+- so, we can use the following calculation to find out the decrease in accuracy in proportions or probability scale:
+
+```{r}
+beta_samples <- as_draws_df(fit_recall)$b_c_set_size # slopes for centred set_size
+
+# effect at CENTRED set_size = 0
+effect_middle <- plogis(alpha_samples) -
+  plogis(alpha_samples - beta_samples)
+
+# summary stats
+round(
+  c(mean = mean(effect_middle),
+  quantile(effect_middle, c(0.025, 0.975))),
+  3)
+```
+
+- but this is taking the set size of 5 as the 'middle'/'centred' set size, but we didn't even have this level in the uncentred `set_size`
+  + better would be to look at the decrease in accuracy from a set size of 2 to 4
+
+```{r}
+four <- 4 - mean(df_recall$set_size) # 'centred' value for set size 4
+two <- 2 - mean(df_recall$set_size) # 'centred' value for set size 2
+
+# extract differeces from the samples
+effect4m2 <-
+  plogis(alpha_samples + four * beta_samples) -
+  plogis(alpha_samples + two * beta_samples)
+
+# compute stats
+round(
+  c(mean = mean(effect4m2),
+    quantile(effect4m2,
+             c(.025,.975))),
+  3)
+```
+
+- alternatively, we could back-transform to probability scale using the function `fitted()` instead of `plogis`
+  + this will work regardless of the type of link function (e.g., probit link)
+- we can consider an imaginary observation where the `c_set_size` is 0, and can now use the `summary()` argument in `fitted()`
+
+```{r}
+fitted(fit_recall,
+       newdata = data.frame(c_set_size = 0),
+       summary = TRUE)[,c("Estimate","Q2.5","Q97.5")]
+```
+
+- or, if we want to see the difference in accuracy from the average set size minus one to the average set size, and from a set size of two to four, we need to define `newdata` with these set sizes:
+
+```{r}
+new_sets <- data.frame(c_set_size = c(0, -1, four, two)) # where 'four' and 'two' are objects defined already in code above
+
+# 'summary = F': grab simulated accuracies, don't summarise
+set_sizes = fitted(fit_recall,
+                   newdata = new_sets,
+                   summary = FALSE)
+
+# print head of collected simulated accuracies
+set_sizes %>% 
+  head() %>%
+  round(3)
+```
+
+- and to calculate the appropriate differences (where column 1 = accuracies at average set_size, column 2 = accuracies at average set_size-1, column 3 = at set_size 4, and column 4 = set_size of 2)
+
+```{r}
+effect_middle <- set_sizes[,1] - set_sizes[,2]
+effect_4m2 <- set_sizes[,3] - set_sizes[,4]
+```
+
+- and calculate summaries
+
+```{r}
+# average-1
+round(
+  c(mean = mean(effect_middle),
+    quantile(effect_middle,
+             c(.025,.975)))
+  ,3)
+
+# 4-2
+round(
+  c(mean = mean(effect_4m2),
+    quantile(effect_4m2,
+             c(.025,.975)))
+  ,3)
+```
+
+- notice we get the same values with `fitted()` as when we calculate effects by hand!
+
+## Descriptive adequacy
+
+- we can use posterior distributions to also make predictions for other conditions not presented int he actual experiment, such as set sizes that weren't even tested!
+  + we could then carry out another experiment to investigate whether our model was right
+- to make predictions for other set sizes, we extend our data set adding rows with set sizes of 3, 5, 7
+  + we'll ad 23 trials for each new set size to match the other set sizes in the experiment
+  + remember: **we need to center our predictor based on the *original* mean set size**
+    + because we want to maintain our interpretation of the intercept!
+
+```{r}
+df_recall_ext <- df_recall %>%
+  bind_rows(tibble(
+    set_size = rep(c(3,5,7), 23),
+    c_set_size = set_size -
+      mean(df_recall$set_size),
+     correct = 0
+  ))
+```
+
+```{r}
+#| label: fig-ch4-distributions
+#| fig-cap-location: top
+#| fig-cap: distributions of posteror predicted mean accuracies for tested set sizes (2,4,6,8) and untested set sizes (3,5,7). Observed mean accuracy $y$ is only relevant for tested set sizes; "observed" accuracies of untested set sizes are given aas 0, but we see their predicted values
+  
+# nicer label for the facets:
+set_size <- paste("set size", 2:8) %>%
+  setNames(-3:3)
+pp_check(fit_recall,
+  type = "stat_grouped",
+  stat = "mean",
+  group = "c_set_size",
+  newdata = df_recall_ext,
+  facet_args = list(
+    ncol = 1, scales = "fixed",
+    labeller = as_labeller(set_size)
+  ),
+  binwidth = 0.02
+) +
+    theme_bw()
+```
+
+- notice that the likelihood is set to 0 for our unobserved set size values of 3, 5, and 7
+  + this is because we didn't actually *observe* any data for these values, so the likelihood is set to 0
+  + however, the posterior predictive distributions are still caluclated, and we could use these as priors for a subsequent replication where we added these values
+
+# Session Info
+
+Compiled with `r R.version$version` (`r R.version$nickname`) in RStudio version 2023.3.0.386 (Cherry Blossom).
+
+```{r}
+#| eval: false
+#| echo: false
+RStudio.Version()$version; RStudio.Version()$release_name
+```
+
+```{r}
+#| echo: false
+system("say -v Moira Ch. 4 has finished running")
+```
+
+```{r}
+sessionInfo()
+```
+
+# References {.unlisted .unnumbered visibility="uncounted"}
+
+::: {#refs custom-style="Bibliography"}
+:::

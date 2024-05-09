@@ -1,0 +1,74 @@
+---
+title: "book_exercises"
+author: "Daniela Palleschi"
+format:
+  html:
+    toc: true
+    # html-math-method: katex
+    self-contained: true
+    css: styles.css
+    number-sections: true
+    number-depth: 3
+    code-overflow: wrap
+    code-tools: true
+editor_options: 
+  chunk_output_type: console
+# bibliography: references.json
+biblio-style: apalike
+---
+
+```{r, message = F}
+#| code-fold: true
+
+# set global knit options
+knitr::opts_chunk$set(echo = T,
+                      eval = T,
+                      error = F,
+                      warning = F,
+                      message = F,
+                      cache = T)
+
+# suppress scientific notation
+options(scipen=999)
+
+# list of required packages
+packages <- c( #"SIN", # this package was removed from the CRAN repository
+               "MASS", "dplyr", "tidyr", "purrr", "extraDistr", "ggplot2", "loo", "bridgesampling", "brms", "bayesplot", "tictoc", "hypr", "bcogsci", "papaja", "grid", "kableExtra", "gridExtra", "lme4", "cowplot", "pdftools", "cmdstanr", "rootSolve", "rstan"
+  )
+
+# NB: if you haven't already installed bcogsci through devtools, it won't be loaded
+## Now load or install & load all
+package.check <- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      install.packages(x, dependencies = TRUE)
+      library(x, character.only = TRUE)
+    }
+  }
+)
+
+# this is also required, taken from the textbook
+
+## Save compiled models:
+rstan_options(auto_write = FALSE)
+## Parallelize the chains using all the cores:
+options(mc.cores = parallel::detectCores())
+# To solve some conflicts between packages
+select <- dplyr::select
+extract <- rstan::extract
+```
+
+```{r, include=FALSE}
+knit_type <- "book"
+```
+
+```{r, child=c('ch4.qmd', 'ch5.qmd')}
+```
+
+# Session Info
+
+```{r}
+sessionInfo()
+```
+

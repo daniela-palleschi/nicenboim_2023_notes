@@ -1,0 +1,194 @@
+---
+title: "Ch. 5"
+---
+
+# Set up {-}
+
+```{r, results = "hide", warning=F,message=F,error=F}
+# set global knit options
+knitr::opts_chunk$set(echo = T, # print chunks?
+                      eval = T, # run chunks?
+                      error = F, # print errors?
+                      warning = F, # print warnings?
+                      message = F, # print messages?
+                      cache = T # cache?; be careful with this!
+                      )
+
+# suppress scientific notation
+options(scipen=999)
+
+# play a sound if error encountered
+options(error = function() {beepr::beep(9)})
+
+# load packages
+## create list of package names
+packages <- c( #"SIN", # this package was removed from the CRAN repository
+               "MASS", "dplyr", "tidyr", "purrr", "extraDistr", "ggplot2", "loo", "bridgesampling", "brms", "bayesplot", "tictoc", "hypr", "bcogsci", "papaja", "grid", "kableExtra", "gridExtra", "lme4", "cowplot", "pdftools", "cmdstanr", "rootSolve", "rstan"
+  )
+
+# NB: if you haven't already installed bcogsci through devtools, it won't be loaded
+## Now load or install & load all
+package.check <- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      install.packages(x, dependencies = TRUE)
+      library(x, character.only = TRUE)
+    }
+  }
+)
+
+# this is also required, taken from the textbook
+
+## Save compiled models:
+rstan_options(auto_write = FALSE)
+## Parallelize the chains using all the cores:
+options(mc.cores = parallel::detectCores())
+# To solve some conflicts between packages
+select <- dplyr::select
+extract <- rstan::extract
+```
+
+
+# Ch. 5 - Bayesian hierarchical models
+
+- **exchangeability** is the Bayesian aalog of "independent and identically distributed" ($iid$)that appears regularly in classical (i.e., frequentist) statistics
+
+## Exchangeability and hierarchical models
+
+- the idea of exchangeability is as follows:
+  + we treat each level of a group (e.g., participant id's) as exchangeable, so we can reassign the indices arbitrarily and lose no information
+  + we believe this for the observations within each level in the group as well (e.g., trials within a participant)
+  + when we include predictors at the level of the observations, these predictors correspond to experimental manipulations (e.g., attentional load, item number, cloze probability, etc) or maybe also at the group level these predictors indicate characteristics of the levels in the group (e.g., memory span, reading level, etc.)
+  + the conditional distributions given these explanatory variables would be exchangeable, i.e., our predictors incorporate all the info that is *not* exchangeable
+  + this is why *item* number is an appropriate cluster, but not *trial* number: if we re-assign the item numbers there is no difference in the expected affects (it's a *factor*), but *trial* number encodes some information that is useful e.g., in terms of fatigue or practice effects
+
+- even if we aren't interested in specific cluster-level estimates, hierarchical models allow us to *generalise* to the underlying population (subjects, items) from which the clusters in the sampel were drawn
+
+- exchangeability is important in Bayesian stats because of a theorem called the **Representation Theorem**
+  + this theorem states that if a sequence of random variables is exchangeable, then the prior distributions on the parameters in a model are a necessary consequence
+  + priors are not merely an arbitrary addition to the frequentist modeling approach
+  
+
+  
+
+## Hierarchical model with a normal likelihood: the N400 effect
+
+```{r}
+data("df_eeg")
+(df_eeg <- df_eeg %>%
+  mutate(c_cloze = cloze - mean(cloze)))
+```
+
+
+### Complete pooling ($M_{cp}$)
+
+#### Model assumptions
+
+#### Likelihood and priors
+
+### No pooling ($M_{np}$)
+
+#### Model assumptions
+
+#### Likelihood and priors
+
+### Varying intercepts and varying slopes model ($M_v$)
+
+#### Model assumptions
+
+#### Likelihood and priors
+
+### Correlated varying intercept varying slopes model ($M_h$)
+
+- the model $M_v$ allowed for differences in intercepts (mean voltage) and slopes (effects of cloze) across subjects
+  + but it has the implicit assumption that these varying intercepts and varying slopes are independent
+- let's fit a model with correlation between intercepts and slopes
+  + we do t his by defining a variance-covariance matrix $\sum$ between the by-subject varying intercepts and slopes, and by assuming that both adjustments (intercept and slope) come from a multivariate (in this case, bivariate) normal distribution
+  
+- assumptions:
+
+  1. EEG averages for N400 spatio-temporal window are normally distributed
+  2. some aspects of the mean signal voltage and of the effect of predicatability dependo n the subject, and these two might be correlated; i.e., we assume group-level intercepts and slopes, and allow a correlation between then by-subject
+  3. there is a linear relationship between cloze and the EEG signal for the trial
+  
+- the likelihood assumes no correlation between group-level intercepts and slopes:
+
+$$
+signal_n \sim \mathit{Normal}(\alpha + u_{subj[n],1} + c\_cloze_n \cdot  (\beta + u_{subj[n],2}),\sigma)
+$$
+
+- the correlation is indicated in the priors on the adjustments for intercept $u_1$ and slopes $u_2$
+  
+$$
+\begin{aligned}
+ \alpha & \sim \mathit{Normal}(0,10) \\
+ \beta  & \sim \mathit{Normal}(0,10) \\
+  \sigma  &\sim \mathit{Normal}_+(0,50)\\
+  {\begin{pmatrix}
+  u_{i,1} \\
+  u_{i,2}
+  \end{pmatrix}}
+ &\sim {\mathcal {N}}
+  \left(
+ {\begin{pmatrix} 
+  0\\
+  0
+ \end{pmatrix}}
+ ,\boldsymbol{\Sigma_u} \right)
+ \end{aligned}
+$$
+
+- to specify a prior for $\sum_u$ we need prors for the standard deviations $\tau_{u_1}$ and $\tau_{u_2}$, and for their correlation $\rho_u$
+
+- for the correlation paramter $\rho_u$, we use the LKJ prior
+  + basic idea: as its parameter, $\eta$ increases, it will favor correlations closer to zero
+  + at $\eta = 1$ the LKJ correlation distribution is *uninformative* (flat)
+  + at $\eta < 1$ it favours extreme correlations
+  + we set $eta = 2$ so that we don't favour extreme correlations, and we still represent our lack of knowledge through the wide spread of the prior between -1 and 1
+    + i.e.,  $eta = 2$ gives us a *regularizing*, relatively uninformative or mildly informative prior
+
+```{r}
+prior_h <- c(
+  prior(normal(0, 10), class = Intercept),
+  prior(normal(0, 10), class = b, coef = c_cloze),
+  prior(normal(0, 50), class = sigma),
+  prior(normal(0, 20),
+    class = sd, coef = Intercept,
+    group = subj
+  ),
+  prior(normal(0, 20),
+    class = sd, coef = c_cloze,
+    group = subj
+  ),
+  prior(lkj(2), class = cor, group = subj)
+)
+```
+
+- now let's run a model
+
+# Session Info
+
+Compiled with `r R.version$version` (`r R.version$nickname`) in RStudio version 2023.3.0.386 (Cherry Blossom).
+
+```{r}
+#| eval: false
+#| echo: false
+RStudio.Version()$version; RStudio.Version()$release_name
+```
+
+```{r}
+#| echo: false
+system("say -v Moira your script has finished running")
+```
+
+```{r}
+sessionInfo()
+```
+
+# References {.unlisted .unnumbered visibility="uncounted"}
+
+::: {#refs custom-style="Bibliography"}
+:::
+
+

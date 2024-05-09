@@ -1,0 +1,984 @@
+---
+title: "Ch. Exercises"
+author: "Daniela Palleschi"
+# format:
+#   html:
+#     toc: true
+#     # html-math-method: katex
+#     self-contained: true
+#     css: styles.css
+#     number-sections: true
+#     number-depth: 3
+#     code-overflow: wrap
+#     code-tools: true
+editor_options: 
+  chunk_output_type: console
+# bibliography: references.json
+biblio-style: apalike
+---
+
+# Set options {-}
+
+```{r, message = F}
+#| code-fold: true
+
+# set global knit options
+# knitr::opts_chunk$set(echo = T,
+#                       eval = T,
+#                       error = F,
+#                       warning = F,
+#                       message = F,
+#                       cache = T)
+
+# suppress scientific notation
+options(scipen=999)
+
+# list of required packages
+packages <- c( #"SIN", # this package was removed from the CRAN repository
+               "MASS", "dplyr", "tidyr", "purrr", "extraDistr", "ggplot2", "loo", "bridgesampling", "brms", "bayesplot", "tictoc", "hypr", "bcogsci", "papaja", "grid", "kableExtra", "gridExtra", "lme4", "cowplot", "pdftools", "cmdstanr", "rootSolve", "rstan"
+  )
+
+# NB: if you haven't already installed bcogsci through devtools, it won't be loaded
+## Now load or install & load all
+package.check <- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      install.packages(x, dependencies = TRUE)
+      library(x, character.only = TRUE)
+    }
+  }
+)
+
+# this is also required, taken from the textbook
+
+## Save compiled models:
+rstan_options(auto_write = FALSE)
+## Parallelize the chains using all the cores:
+options(mc.cores = parallel::detectCores())
+# To solve some conflicts between packages
+select <- dplyr::select
+extract <- rstan::extract
+```
+# Chapter 5 - Bayesian hierachical models
+
+## Exercise 5.1 A hierarchical model (normal likelihood) of cognitive load on pupil .
+
+As in section 4.1, we focus on the effect of cognitive load on pupil , but this time we look at all the subjects of Wahn et al. (2016):
+
+```{r}
+data("df_pupil_complete")
+df_pupil_complete
+```
+
+You should be able to now fit a “maximal” model (correlated varying intercept and slopes for subjects) assuming a normal likelihood. Base your priors in the priors discussed in section 4.1.
+
+:::{.callout-tip}
+### Maximal model
+
+- first centre the predictor
+
+```{r}
+df_pupil_complete <- df_pupil_complete %>%
+  mutate(c_load = load-mean(load))
+```
+
+- then run the model
+
+```{r, message=F, error=T, warning=T}
+fit_pupil <- brm(p_size ~ 1 + c_load + 
+                   (1 +c_load | subj), 
+                 data = df_pupil_complete,
+                 family = gaussian(),
+                 prior = c(
+                   prior(normal(1000, 500), class = Intercept),
+                   prior(normal(0, 1000), class = sigma),
+                   prior(normal(0, 100), class = b, coef = c_load),
+                   prior(normal(0, 1000), class = sd),
+                   prior(lkj(2), class = cor)
+                 ) )
+```
+:::
+
+a. Examine the effect of load on pupil size, and the average pupil size. What do you conclude?
+
+:::{.callout-tip}
+#### My solution
+```{r}
+fit_pupil
+```
+
+- 95% CrI crosses 0: quite a bit of uncertainty
+
+- alternatively, to only print `c_load` 
+```{r}
+posterior_summary(fit_pupil, variable = "b_c_load")
+```
+
+- but the intercept is quite large:
+```{r}
+posterior_summary(fit_pupil, variable = "b_Intercept")
+```
+
+- even though we assumed it wouldn't be
+
+```{r}
+brms::prior_summary(fit_pupil)
+```
+
+- overly informative prior for the intercept?
+:::
+
+b. Do a sensitivity analysis for the prior on the intercept ($\alpha$). What is the estimate of the effect ($\beta$) under different priors?
+
+:::{.callout-tip}
+#### My solution
+
+- try a *wider* prior for $\alpha$; I'm choosing 3000 and 1000ms
+
+$$
+\alpha \sim Normal(3000,1000)
+$$
+
+```{r}
+fit_pupil_2 <- brm(p_size ~ 1 + c_load + 
+                   (1 + c_load | subj), 
+                 data = df_pupil_complete,
+                 family = gaussian(),
+                 prior = c(
+                   prior(normal(3000, 1000), class = Intercept),
+                   prior(normal(0, 1000), class = sigma),
+                   prior(normal(0, 100), class = b, coef = c_load),
+                   prior(normal(0, 1000), class = sd),
+                   prior(lkj(2), class = cor)
+                 ) )
+```
+
+```{r}
+posterior_summary(fit_pupil_2, variable = "b_c_load")
+```
+
+- the effect of `c_load` now ha more certainty
+
+```{r}
+posterior_summary(fit_pupil, variable = "b_Intercept")
+```
+
+
+:::
+
+c. Is the effect of load consistent across subjects? Investigate this visually.
+
+:::{.callout-tip}
+#### My solution
+
+- check out overall effect; there are 3 peaks
+
+```{r}
+pp_check(fit_pupil_2, ndraws = 50, type = "dens_overlay")
+```
+
+- now by participants
+
+```{r}
+ppc_dens_overlay_grouped(df_pupil_complete$p_size,
+  yrep =
+    posterior_predict(fit_pupil_2,
+      ndraws = 100
+    ),
+  group = df_pupil_complete$subj
+) +
+  xlab("Signal in the N400 spatiotemporal window")
+```
+
+- and by sd
+
+```{r}
+pp_check(fit_pupil_2,
+  type = "stat_grouped",
+  ndraws = 1000,
+  group = "subj",
+  stat = "sd"
+)
+```
+
+- and also:
+
+```{r}
+## For the hierarchical model is more complicated, # because we want the effect (beta) + adjustment: # we extract the overall group level effect:
+beta <- c(as_draws_df(fit_pupil_2)$b_c_load)
+# We extract the individual adjustments
+ind_effects_v <- paste0("r_subj[", unique(df_pupil_complete$subj), ",c_load]") 
+adjustment <- as.matrix(as_draws_df(fit_pupil)[ind_effects_v])
+# We get the by subject effects in a data frame where each adjustment # is in each column.
+by_subj_effect <- as_tibble(beta + adjustment)
+# We summarize them by getting a table with the mean and the
+# quantiles for each column and then binding them.
+par_h <- lapply(by_subj_effect, function(x) {
+  tibble(
+    Estimate = mean(x),
+    Q2.5 = quantile(x, .025),
+    Q97.5 = quantile(x, .975)
+  )
+}) %>%
+  bind_rows() %>%
+  # We add a column to identify that the model, # and one with the subject labels:
+  mutate(subj = unique(df_pupil_complete$subj)) %>% arrange(Estimate) %>%
+  mutate(subj = factor(subj, levels = subj))
+ggplot(par_h,
+       aes(
+         ymin = Q2.5,
+         ymax = Q97.5,
+         x = subj,
+         y = Estimate
+       )) +
+  geom_errorbar() +
+  geom_point() +
+  # We'll also add the mean and 95% CrI of the overall difference # to the plot:
+  geom_hline(yintercept =
+               posterior_summary(fit_pupil_2)["b_c_load", "Estimate"]) +
+  geom_hline(
+    yintercept =
+      posterior_summary(fit_pupil_2)["b_c_load", "Q2.5"],
+    linetype = "dotted",
+    linewidth = .5
+  ) + geom_hline(
+    yintercept =
+      posterior_summary(fit_pupil_2)["b_c_load", "Q97.5"],
+    linetype = "dotted",
+    linewidth = .5
+  ) +
+  coord_flip() +
+  ylab("Change in pupil size") + 
+  xlab("Participant ID") +
+  theme_bw()
+```
+:::
+
+## Exercise 5.2 Are subject relatives easier to process than object relatives (log-normal likelihood)?
+
+We begin with a classic question from the psycholinguistics literature: Are subject relatives easier to process than object relatives? The data come from Experiment 1 in a paper by Grodner and Gibson (2005).
+
+Scientific question: Is there a subject relative advantage in reading?
+
+Grodner and Gibson (2005) investigate an old claim in psycholinguistics that object relative clause (ORC) sentences are more difficult to process than subject relative clause (SRC) sentences. One explanation for this predicted difference is that the distance between the relative clause verb (sent in the example below) and the head noun phrase of the relative clause (reporter in the example below) is longer in ORC vs. SRC. Examples are shown below. The relative clause is shown in square brackets.
+
+(1a) The reporter [who the photographer sent to the editor] was hoping for a good story. (ORC)
+
+(1b) The reporter [who sent the photographer to the editor] was hoping for a good story. (SRC)
+
+The underlying explanation has to do with memory processes: Shorter linguistic dependencies are easier to process due to either reduced interference or decay, or both. For implemented computational models that spell this point out, see Lewis and Vasishth (2005) and Engelmann, Jäger, and Vasishth (2020).
+
+In the Grodner and Gibson data, the dependent measure is reading time at the relative clause verb, (e.g., sent) of different sentences with either ORC or SRC. The dependent variable is in milliseconds and was measured in a self-paced reading task. Self-paced reading is a task where subjects read a sentence or a short text word-by-word or phrase-by-phrase, pressing a button to get each word or phrase displayed; the preceding word disappears every time the button is pressed. In 6.1, we provide a more detailed explanation of this experimental method.
+
+For this experiment, we are expecting longer reading times at the relative clause verbs of ORC sentences in comparison to the relative clause verb of SRC sentences.
+
+```{r}
+data("df_gg05_rc")
+df_gg05_rc
+```
+
+You should use a sum coding for the predictors. Here, object relative clauses ("objgaps") are coded +1, subject relative clauses -1.
+
+:::{.callout-tip}
+# Set contrasts
+```{r}
+df_gg05_rc$condition <- factor(df_gg05_rc$condition, levels = c("subjgap","objgap"))
+class(df_gg05_rc$condition)
+contrasts(df_gg05_rc$condition) <- c(-.5,+.5)
+contrasts(df_gg05_rc$condition)
+```
+
+- or, as in the book:
+
+```{r}
+df_gg05_rc <- df_gg05_rc %>%
+  mutate(c_cond = if_else(condition == "objgap", .5, -.5))
+```
+
+:::
+
+You should be able to now fit a “maximal” model (correlated varying intercept and slopes for subjects and for items) assuming a log-normal likelihood.
+
+:::{.callout-tip}
+#### Maximal model
+
+```{r}
+fit_df_gg05_rc <-
+  brm(
+    RT ~ condition + (condition |
+                     subj) + (condition | item),
+    family = lognormal(),
+    prior =
+      c(
+        prior(normal(6, 1.5), class = Intercept),
+        prior(normal(0, .1), class = b),
+        prior(normal(0, 1), class = sigma),
+        prior(normal(0, 1), class = sd),
+        prior(lkj(2), class = cor)
+      ),
+    data = df_gg05_rc
+  )
+
+fit_df_gg05_rc
+```
+:::
+
+a. Examine the effect of relative clause attachment site (the predictor `c_cond`) on reading times RT ($\beta$).
+
+:::{.callout-tip}
+##### My solution
+
+- the effect of RC attachment on RT on the log scale is 
+
+```{r}
+posterior_summary(fit_df_gg05_rc, variable = "b_condition1")
+```
+
+:::
+
+b. Estimate the median difference between relative clause attachment sites in milliseconds, and report the mean and 95% CI.
+
+:::{.callout-tip}
+##### My solution
+
+```{r}
+alpha <- as_draws_df(fit_df_gg05_rc)$b_Intercept
+beta <- as_draws_df(fit_df_gg05_rc)$b_condition1
+# Difference between object RC coded as .5 and subject RC coded as .5 
+effect <- exp(alpha + beta * .5) - exp(alpha + beta * -.5)
+c(mean = mean(effect), quantile(effect, c(.025,.975)))
+```
+:::
+
+c. Do a sensitivity analysis. What is the estimate of the effect ($\beta$) under different priors? What is the difference in milliseconds between conditions under different priors?
+
+:::{.callout-tip}
+##### My solution
+
+- first let's check out the fit of the model
+
+```{r}
+pp_check(fit_df_gg05_rc, ndraws = 50, type = "dens_overlay")
+```
+
+- now by participants
+
+```{r}
+ppc_dens_overlay_grouped(df_gg05_rc$RT,
+  yrep =
+    posterior_predict(fit_df_gg05_rc,
+      ndraws = 100
+    ),
+  group = df_gg05_rc$subj
+) +
+  xlab("Signal in the N400 spatiotemporal window")
+```
+
+- and by sd
+
+```{r}
+pp_check(fit_df_gg05_rc,
+  type = "stat_grouped",
+  ndraws = 1000,
+  group = "subj",
+  stat = "sd"
+)
+```
+
+```{r}
+posterior_summary(fit_df_gg05_rc, variable = "b_condition1")
+```
+
+```{r}
+posterior_summary(fit_df_gg05_rc, variable = "b_Intercept")
+```
+
+- our posteriors are pretty close to our priors
+
+```{r}
+brms::prior_summary(fit_df_gg05_rc)
+```
+
+- let's see if this is due to the influence of our priors. Let's start with *narrower* prior
+
+$$
+\beta \sim Normal(0,.01)
+$$
+
+```{r}
+fit_df_gg05_rc_tight <-
+  brm(
+    RT ~ condition + (condition |
+                     subj) + (condition | item),
+    family = lognormal(),
+    prior =
+      c(
+        prior(normal(6, 1.5), class = Intercept),
+        prior(normal(0, .01), class = b),
+        prior(normal(0, 1), class = sigma),
+        prior(normal(0, 1), class = sd),
+        prior(lkj(2), class = cor)
+      ),
+    data = df_gg05_rc
+  )
+
+fit_df_gg05_rc_tight
+```
+
+```{r}
+posterior_summary(fit_df_gg05_rc_tight, variable = "b_condition1")
+```
+
+- and now a *wider* prior
+
+$$
+\beta \sim Normal(0,1)
+$$
+
+```{r}
+fit_df_gg05_rc_wide <-
+  brm(
+    RT ~ condition + (condition |
+                     subj) + (condition | item),
+    family = lognormal(),
+    prior =
+      c(
+        prior(normal(6, 1.5), class = Intercept),
+        prior(normal(0, 1), class = b),
+        prior(normal(0, 1), class = sigma),
+        prior(normal(0, 1), class = sd),
+        prior(lkj(2), class = cor)
+      ),
+    data = df_gg05_rc
+  )
+
+fit_df_gg05_rc_wide
+```
+
+```{r}
+posterior_summary(fit_df_gg05_rc_wide, variable = "b_condition1")
+```
+
+```{r}
+prior <- data.frame(posterior_summary(fit_df_gg05_rc, variable = "b_condition1")) %>%
+  mutate("Prior for $\\beta$" = "Normal(0,.1)")
+tight <- data.frame(posterior_summary(fit_df_gg05_rc_tight, variable = "b_condition1")) %>%
+  mutate("Prior for $\\beta$" = "Normal(0,.01)")
+wide <- data.frame(posterior_summary(fit_df_gg05_rc_wide, variable = "b_condition1")) %>%
+  mutate("Prior for $\\beta$" = "Normal(0,1)")
+
+sens_priors <- rbind(prior,tight,wide)
+
+brms::prior_summary(fit_df_gg05_rc_wide)
+sens_priors %>% 
+  kbl() %>%
+  kable_styling()
+```
+
+- and now in milliseconds
+
+```{r}
+alpha1 <- as_draws_df(fit_df_gg05_rc)$b_Intercept 
+beta1 <- as_draws_df(fit_df_gg05_rc)$b_condition1
+diff1 <- exp(alpha1 + beta1/2) - exp(alpha1 - beta1/2)
+prior_ms <- data.frame(mean = mean(diff1), quantile(diff1, .025), quantile(diff1, .975), row.names = NULL) %>%
+  rename("Estimate (ms)" = "mean",
+         "2.5%" = "quantile.diff1..0.025.",
+         "97.5%" = "quantile.diff1..0.975.")%>%
+  mutate("Prior for $\\beta$" = "Normal(0,.1)")
+
+alpha1 <- as_draws_df(fit_df_gg05_rc_tight)$b_Intercept 
+beta1 <- as_draws_df(fit_df_gg05_rc_tight)$b_condition1
+diff1 <- exp(alpha1 + beta1/2) - exp(alpha1 - beta1/2)
+tight_ms <- data.frame(mean = mean(diff1), quantile(diff1, .025), quantile(diff1, .975), row.names = NULL) %>%
+  rename("Estimate (ms)" = "mean",
+         "2.5%" = "quantile.diff1..0.025.",
+         "97.5%" = "quantile.diff1..0.975.")%>%
+  mutate("Prior for $\\beta$" = "Normal(0,.01)")
+
+alpha1 <- as_draws_df(fit_df_gg05_rc_wide)$b_Intercept 
+beta1 <- as_draws_df(fit_df_gg05_rc_wide)$b_condition1
+diff1 <- exp(alpha1 + beta1/2) - exp(alpha1 - beta1/2)
+wide_ms <- data.frame(mean = mean(diff1), quantile(diff1, .025), quantile(diff1, .975), row.names = NULL) %>%
+  rename("Estimate (ms)" = "mean",
+         "2.5%" = "quantile.diff1..0.025.",
+         "97.5%" = "quantile.diff1..0.975.") %>%
+  mutate("Prior for $\\beta$" = "Normal(0,1)")
+  
+
+priors_ms <- rbind(prior_ms,tight_ms,wide_ms) %>%
+  mutate(effect = "b_condition1") %>%
+  relocate(effect, .before="Estimate (ms)")
+
+priors_ms %>% 
+  kbl() %>%
+  kable_styling()
+```
+
+- we see lots of variation in estimates as a function of our priors
+  + with the tight priors, there is a lot more uncertainty
+  + with the regularised and wider priors the effects are a bit more similar
+  
+```{r}
+# these are all the intercept, i'm interested in the slope though :/
+ggpubr::ggarrange(
+  pp_check(fit_df_gg05_rc_wide, type = "stat") + theme_bw() + ggtitle("Wide priors N(0,1)"),
+  pp_check(fit_df_gg05_rc_tight, type = "stat") + theme_bw() + ggtitle("Tight priors N(0,.01)"),
+  pp_check(fit_df_gg05_rc, type = "stat") + theme_bw() + ggtitle("Original priors N(0,.1)"),
+nrow = 3
+)
+```
+
+
+:::
+
+
+## Exercise 5.3 Relative clause processing in Mandarin Chinese
+
+Load the following two data sets:
+
+```{r}
+data("df_gibsonwu")
+data("df_gibsonwu2")
+```
+
+The data are taken from two experiments that investigate (inter alia) the effect of relative clause type on reading time in Chinese. The data are from Gibson and Wu (2013) and Vasishth et al. (2013) respectively. The second data set is a direct replication attempt of the Gibson and Wu (2013) experiment.
+
+Chinese relative clauses are interesting theoretically because they are prenominal: the relative clause appears before the head noun. For example, the English relative clauses shown above would appear in the following order in Mandarin. The square brackets mark the relative clause, and REL refers to the Chinese equivalent of the English relative pronoun who.
+
+(2a) [The photographer sent to the editor] REL the reporter was hoping for a good story. (ORC)
+
+(2b) [sent the photographer to the editor] REL the reporter who was hoping for a good story. (SRC)
+
+As discussed in Gibson and Wu (2013), the consequence of Chinese relative clauses being prenominal is that the distance between the verb in relative clause and the head noun is larger in subject relatives than object relatives. Hsiao and Gibson (2003) were the first to suggest that the larger distance in subject relatives leads to longer reading time at the head noun. Under this view, the prediction is that subject relatives are harder to process than object relatives. If this is true, this is interesting and surprising because in most other languages that have been studied, subject relatives are easier to process than object relatives; so Chinese will be a very unusual exception cross-linguistically.
+
+The data provided are for the critical region (the head noun; here, reporter). The experiment method is self-paced reading, so we have reading times in milliseconds. The second data set is a direct replication attempt of the first data set, which is from Gibson and Wu (2013).
+
+The research hypothesis is whether the difference in reading times between object and subject relative clauses is negative. For the first data set (`df_gibsonwu`), investigate this question by fitting two “maximal” hierarchical models (correlated varying intercept and slopes for subjects and items). The dependent variable in both models is the raw reading time in milliseconds. The first model should use the normal likelihood in the model; the second model should use the log-normal likelihood. In both models, use $\pm 0.5$ sum coding to model the effect of relative clause type. You will need to decide on appropriate priors for the various parameters.
+
+:::{.callout-tip}
+
+#### Contrasts
+
+- `obj-ext = -0.5`, `subj-ext = 0.5`
+
+```{r}
+head(df_gibsonwu)
+df_gibsonwu$type <- factor(df_gibsonwu$type, levels = c("obj-ext","subj-ext"))
+
+contrasts(df_gibsonwu$type) <- c(0.5,-0.5)
+contrasts(df_gibsonwu$type)
+```
+::::
+
+:::{.callout-tip}
+
+#### Normal likelihood
+
+- first set priors
+
+```{r}
+priors_gw_norm <- c(
+  set_prior("normal(500, 150)", class = "Intercept"),
+  set_prior("normal(0,500)", class = "b", coef = "type1"),
+  set_prior("normal(0,500)", class = "sd"),
+  set_prior("normal(0,1000)",class = "sigma"),
+  set_prior("lkj(2)", class = "cor")
+)
+```
+
+- fit model
+
+```{r, message = F, error=TRUE, warning=TRUE}
+fit_gw_norm <- brm(rt ~ 1 + type + 
+                   (1 + type | subj) +
+                   (1 + type | item), 
+                 data = df_gibsonwu,
+                 family = gaussian(),
+                 prior = priors_gw_norm)
+```
+:::
+
+:::{.callout-tip}
+
+#### Log-normal likelihood
+
+- set priors
+
+```{r}
+priors_gw_log <- c(
+  set_prior("normal(6, 1.5)", class = "Intercept"),
+  set_prior("normal(0,1)", class = "b", coef = "type1"),
+  set_prior("normal(0,1)",class = "sd"),
+  set_prior("normal(0,1)",class = "sigma"),
+  set_prior("lkj(2)", class = "cor")
+)
+```
+
+- fit model
+
+```{r, message = F, error=TRUE, warning=TRUE}
+fit_gw_log <- brm(rt ~ 1 + type + 
+                   (1 + type | subj) +
+                   (1 + type | item), 
+                 data = df_gibsonwu,
+                 family = lognormal(),
+                 prior = priors_gw_log)
+```
+:::
+
+a. Plot the posterior predictive distributions from the two models. What is the difference in the posterior predictive distributions of the two models; and why is there a difference?
+
+:::{.callout-tip}
+
+##### Posterior predictive distributions
+
+```{r}
+ggpubr::ggarrange(
+  pp_check(fit_gw_norm, ndraws = 1000) +
+    ggtitle("Normal distr") +
+    theme(legend.position = "none"),
+  pp_check(fit_gw_log, ndraws = 1000) + 
+    ggtitle("Log-normal distr") +
+    theme(legend.position = "none"),
+  cowplot::get_legend(pp_check(fit_gw_log) +
+                        theme(legend.position = "bottom")),
+  ncol = 1,
+  heights = c(.45,.45,.1)
+)
+```
+
+- quite a mismatch in normal likelihood model, e.g., negative values are generated
+- log-normal better fit
+
+:::
+
+b. Examine the posterior distributions of the effect estimates (in milliseconds) in the two models. Why are these different?
+
+:::{.callout-tip}
+
+##### Posterior distribution 
+
+```{r}
+# Normal distr
+plot(fit_gw_norm)
+```
+
+```{r}
+# Log distr
+plot(fit_gw_log)
+```
+
+##### Effect estimates
+
+- look at effect estimates
+
+```{r}
+# normal distr
+gw_intercept_norm <- as_draws_df(fit_gw_norm)$b_Intercept
+gw_slope_norm <- as_draws_df(fit_gw_norm)$b_type1
+
+gw_RT_diff_norm <- gw_slope_norm
+round(quantile(gw_RT_diff_norm,prob=c(0.025,0.975)),2)
+```
+
+```{r}
+# log distr
+gw_intercept_log <- as_draws_df(fit_gw_log)$b_Intercept
+gw_slope_log <- as_draws_df(fit_gw_log)$b_type1
+
+gw_RT_diff_log <- exp(gw_intercept_log + gw_slope_log/2) -
+exp(gw_intercept_log - gw_slope_log/2)
+quantile(gw_RT_diff_log,prob=c(0.025,0.975))
+```
+
+```{r}
+boxplot(rt~type,df_gibsonwu)
+```
+
+- 95% credible interval for estimates include 0 for both norm and log-norm distributions
+- log-norm model CrI is tighter, and includes smaller effect size (but includes 0)
+
+:::
+
+c. Given the posterior predictive distributions you plotted above, why is the log-normal likelihood model better for carrying out inference and hypothesis testing?
+
+:::{.callout-tip}
+
+```{r}
+# look at range per type
+df_gibsonwu %>%
+  group_by(type) %>%
+  summarise(min(rt), max(rt))
+```
+
+```{r}
+library(ggrain) 
+df_gibsonwu %>%
+  # filter(session!="bi") %>%
+  # mutate(px_list = paste0(participant,list)) %>%
+  ggplot(data = ., 
+         aes(x = type, y = rt, 
+             fill = type, color = type, shape = type)) +
+  labs(title = "Distribution of observations") +
+  geom_rain(alpha = .5, rain.side = 'f1x1',
+            violin.args = list(color = NA, alpha = .5)) +
+  theme_bw() +
+  scale_fill_manual(values=c("dodgerblue", "darkorange")) +
+  scale_color_manual(values=c("dodgerblue", "darkorange")) 
+```
+
+#### My answer
+
+- subj-ext had extreme raw values; this would've biased the model with a normal distribution
+
+:::
+
+Next, work out a normal approximation of the log-normal model’s posterior distribution for the relative clause effect that you obtained from the above data analysis. Then use that normal approximation as an informative prior for the slope parameter when fitting a hierarchical model to the second data set. This is an example of incrementally building up knowledge by successively using a previous study’s posterior as a prior for the next study; this is essentially equivalent to pooling both data sets (check that pooling the data and using a Normal(0,1) prior for the effect of interest, with a log-normal likelihood, gives you approximately the same posterior as the informative-prior model fit above).
+
+:::{.callout-tip}
+
+#### Dataset 1 log estimates
+
+- first check 2nd dataset
+
+```{r}
+head(df_gibsonwu2)
+df_gibsonwu2 <- df_gibsonwu2 %>%
+  rename("type" = condition)
+df_gibsonwu2$type <- factor(df_gibsonwu2$type, levels = c("obj-ext","subj-ext"))
+
+contrasts(df_gibsonwu2$type) <- c(0.5,-0.5)
+contrasts(df_gibsonwu2$type)
+```
+
+- remind ourselves of the estimates from the first dataset
+
+```{r}
+summary(fit_gw_log)
+```
+
+- for replication study, use:
+  + type: $LogNormal(-0.07, 0.07)$ (`type1` Estimate and Est. Error?)
+  + Intercept: $LogNormal(6, 0.06)$
+
+#### Dataset 2 model
+
+```{r}
+priors_gw2_log <- c(
+  set_prior("normal(6, 0.07)", class = "Intercept"),
+  set_prior("normal(-0.7,0.06)", class = "b", coef = "type1"),
+  set_prior("normal(0,1)",class = "sd"),
+  set_prior("normal(0,1)",class = "sigma"),
+  set_prior("lkj(2)", class = "cor")
+)
+```
+
+- fit model; convergence warning (ESS too low)
+
+```{r, message = F, error=TRUE, warning=TRUE}
+fit_gw2_log <- brm(rt ~ 1 + type + 
+                   (1 + type | subj) +
+                   (1 + type | item), 
+                 data = df_gibsonwu2,
+                 family = lognormal(),
+                 prior = priors_gw2_log)
+```
+
+```{r}
+summary(fit_gw2_log)
+```
+
+```{r}
+plot(fit_gw2_log)
+```
+
+##### Estimates
+
+```{r}
+# log distr
+gw2_intercept_log <- as_draws_df(fit_gw2_log)$b_Intercept
+gw2_slope_log <- as_draws_df(fit_gw2_log)$b_type1
+
+gw2_RT_diff_log <- exp(gw2_intercept_log + gw2_slope_log/2) - exp(gw2_intercept_log - gw2_slope_log/2)
+quantile(gw2_RT_diff_log,prob=c(0.025,0.975))
+```
+
+:::
+
+:::{.callout-tip}
+
+### Datasets 1 and 2
+
+```{r}
+# make sure 2 datasets have same column names/order
+names(df_gibsonwu); names(df_gibsonwu2)
+
+df_gibsonwu2 <- df_gibsonwu2 %>%
+  select(subj,item,type,rt) %>%
+  mutate(subj = paste0(subj,"_gw2"),
+         item = paste0(item,"_gw2"))
+
+df_gibsonwu <- df_gibsonwu %>%
+  mutate(subj = paste0(subj,"_gw1"),
+         item = paste0(item,"_gw1"))
+
+names(df_gibsonwu) == names(df_gibsonwu2)
+
+# combine
+df_gw12 <- rbind(df_gibsonwu,df_gibsonwu2)
+```
+
+##### Informative model
+
+```{r}
+# contrasts
+head(df_gw12)
+df_gw12$type <- factor(df_gw12$type, levels = c("obj-ext","subj-ext"))
+
+contrasts(df_gw12$type) <- c(0.5,-0.5)
+contrasts(df_gw12$type)
+```
+
+
+- same priors as based on previous models
+
+```{r}
+priors_gw12_log <- c(
+  set_prior("normal(6, 0.07)", class = "Intercept"),
+  set_prior("normal(-0.7,0.06)", class = "b", coef = "type1"),
+  set_prior("normal(0,1)",class = "sd"),
+  set_prior("normal(0,1)",class = "sigma"),
+  set_prior("lkj(2)", class = "cor")
+)
+```
+
+```{r, message = F, error=TRUE, warning=TRUE}
+fit_gw12_log <- brm(rt ~ 1 + type + 
+                   (1 + type | subj) +
+                   (1 + type | item), 
+                 data = df_gw12,
+                 family = lognormal(),
+                 prior = priors_gw12_log)
+```
+
+```{r}
+summary(fit_gw12_log)
+```
+
+```{r}
+plot(fit_gw12_log)
+```
+
+##### Estimates
+
+```{r}
+# log distr
+gw12_intercept_log <- as_draws_df(fit_gw12_log)$b_Intercept
+gw12_slope_log <- as_draws_df(fit_gw12_log)$b_type1
+
+gw12_RT_diff_log <- exp(gw12_intercept_log + gw12_slope_log/2) - exp(gw12_intercept_log - gw12_slope_log/2)
+quantile(gw12_RT_diff_log,prob=c(0.025,0.975))
+```
+
+- negative slope, CrI doesn't include 0
+
+#### Regularised prior?
+
+```{r}
+priors_gw12_log_reg <- c(
+  set_prior("normal(6, 1.5)", class = "Intercept"),
+  set_prior("normal(0,1)", class = "b", coef = "type1"),
+  set_prior("normal(0,1)",class = "sd"),
+  set_prior("normal(0,1)",class = "sigma"),
+  set_prior("lkj(2)", class = "cor")
+)
+```
+
+```{r, message = F, error=TRUE, warning=TRUE}
+fit_gw12_log_reg <- brm(rt ~ 1 + type + 
+                   (1 + type | subj) +
+                   (1 + type | item), 
+                 data = df_gw12,
+                 family = lognormal(),
+                 prior = priors_gw12_log_reg)
+```
+
+```{r}
+summary(fit_gw12_log_reg)
+prior_summary(fit_gw12_log_reg)
+```
+
+```{r}
+plot(fit_gw12_log_reg)
+```
+
+##### Estimates
+
+```{r}
+# log distr
+gw12_intercept_log_reg <- as_draws_df(fit_gw12_log_reg)$b_Intercept
+gw12_slope_log_reg <- as_draws_df(fit_gw12_log_reg)$b_type1
+
+gw12_RT_diff_log_reg <- exp(gw12_intercept_log_reg + gw12_slope_log_reg/2) - 
+  exp(gw12_intercept_log_reg - gw12_slope_log_reg/2)
+quantile(gw12_RT_diff_log_reg,prob=c(0.025,0.975))
+```
+
+- now the 95% CrI does not include 0, but the range of values is much tighter and includes smaller values
+
+:::
+
+## Exercise 5.4 - Agreement attraction in comprehension
+
+Load the following data:
+
+```{r}
+data("df_dillonE1")
+dillonE1 <- df_dillonE1
+head(dillonE1)
+```
+
+The data are taken from an experiment that investigate (inter alia) the effect of number similarity between a noun and the auxiliary verb in sentences like the following. There are two levels to a factor called Int(erference): low and high.
+
+(3a) *low*: The key to the cabinet are on the table 
+(3b) *high*: The key to the cabinets are on the table
+
+Here, in (3b), the auxiliary verb are is predicted to be read faster than in (3a), because the plural marking on the noun cabinets leads the reader to think that the sentence is grammatical. (Both sentences are ungrammatical.) This phenomenon, where the high condition is read faster than the low condition, is called **agreement attraction**.
+
+The data provided are for the critical region (the auxiliary verb are). The experiment method is eye-tracking; we have total reading times in milliseconds.
+
+The research question is whether the difference in reading times between high and low conditions is negative.
+
+- First, using a log-normal likelihood, fit a hierarchical model with correlated varying intercept and slopes for subjects and items. You will need to decide on the priors for the model.
+- By simply looking at the posterior distribution of the slope parameter, $\beta$, what would you conclude about the theoretical claim relating to agreement attraction?
+
+## Exercise 5.5
+
+## Exercise 5.6
+
+## Exercise 5.7
+
+## Exercise 5.8
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished presentation. To learn more about Quarto presentations see <https://quarto.org/docs/presentations/>.
+
+## Bullets
+
+When you click the **Render** button a document will be generated that includes:
+
+-   Content authored with markdown
+-   Output from executable code
+
+## Code
+
+When you click the **Render** button a presentation will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+1 + 1
+```
+
+

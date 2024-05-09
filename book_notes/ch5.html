@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.4.553">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Ch. 5</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="ch5_files/libs/clipboard/clipboard.min.js"></script>
+<script src="ch5_files/libs/quarto-html/quarto.js"></script>
+<script src="ch5_files/libs/quarto-html/popper.min.js"></script>
+<script src="ch5_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="ch5_files/libs/quarto-html/anchor.min.js"></script>
+<link href="ch5_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="ch5_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="ch5_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="ch5_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="ch5_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Ch. 5</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="set-up" class="level1 unnumbered">
+<h1 class="unnumbered">Set up</h1>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># set global knit options</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>knitr<span class="sc">::</span>opts_chunk<span class="sc">$</span><span class="fu">set</span>(<span class="at">echo =</span> T, <span class="co"># print chunks?</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>                      <span class="at">eval =</span> T, <span class="co"># run chunks?</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>                      <span class="at">error =</span> F, <span class="co"># print errors?</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>                      <span class="at">warning =</span> F, <span class="co"># print warnings?</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>                      <span class="at">message =</span> F, <span class="co"># print messages?</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>                      <span class="at">cache =</span> T <span class="co"># cache?; be careful with this!</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>                      )</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co"># suppress scientific notation</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">options</span>(<span class="at">scipen=</span><span class="dv">999</span>)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co"># play a sound if error encountered</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="fu">options</span>(<span class="at">error =</span> <span class="cf">function</span>() {beepr<span class="sc">::</span><span class="fu">beep</span>(<span class="dv">9</span>)})</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co"># load packages</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="do">## create list of package names</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>packages <span class="ot">&lt;-</span> <span class="fu">c</span>( <span class="co">#"SIN", # this package was removed from the CRAN repository</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>               <span class="st">"MASS"</span>, <span class="st">"dplyr"</span>, <span class="st">"tidyr"</span>, <span class="st">"purrr"</span>, <span class="st">"extraDistr"</span>, <span class="st">"ggplot2"</span>, <span class="st">"loo"</span>, <span class="st">"bridgesampling"</span>, <span class="st">"brms"</span>, <span class="st">"bayesplot"</span>, <span class="st">"tictoc"</span>, <span class="st">"hypr"</span>, <span class="st">"bcogsci"</span>, <span class="st">"papaja"</span>, <span class="st">"grid"</span>, <span class="st">"kableExtra"</span>, <span class="st">"gridExtra"</span>, <span class="st">"lme4"</span>, <span class="st">"cowplot"</span>, <span class="st">"pdftools"</span>, <span class="st">"cmdstanr"</span>, <span class="st">"rootSolve"</span>, <span class="st">"rstan"</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co"># NB: if you haven't already installed bcogsci through devtools, it won't be loaded</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="do">## Now load or install &amp; load all</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>package.check <span class="ot">&lt;-</span> <span class="fu">lapply</span>(</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>  packages,</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>  <span class="at">FUN =</span> <span class="cf">function</span>(x) {</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="sc">!</span><span class="fu">require</span>(x, <span class="at">character.only =</span> <span class="cn">TRUE</span>)) {</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>      <span class="fu">install.packages</span>(x, <span class="at">dependencies =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>      <span class="fu">library</span>(x, <span class="at">character.only =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="co"># this is also required, taken from the textbook</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a><span class="do">## Save compiled models:</span></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="fu">rstan_options</span>(<span class="at">auto_write =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="do">## Parallelize the chains using all the cores:</span></span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="fu">options</span>(<span class="at">mc.cores =</span> parallel<span class="sc">::</span><span class="fu">detectCores</span>())</span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="co"># To solve some conflicts between packages</span></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>select <span class="ot">&lt;-</span> dplyr<span class="sc">::</span>select</span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>extract <span class="ot">&lt;-</span> rstan<span class="sc">::</span>extract</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="ch.-5---bayesian-hierarchical-models" class="level1">
+<h1>Ch. 5 - Bayesian hierarchical models</h1>
+<ul>
+<li><strong>exchangeability</strong> is the Bayesian aalog of “independent and identically distributed” (<span class="math inline">\(iid\)</span>)that appears regularly in classical (i.e., frequentist) statistics</li>
+</ul>
+<section id="exchangeability-and-hierarchical-models" class="level2">
+<h2 class="anchored" data-anchor-id="exchangeability-and-hierarchical-models">Exchangeability and hierarchical models</h2>
+<ul>
+<li><p>the idea of exchangeability is as follows:</p>
+<ul>
+<li>we treat each level of a group (e.g., participant id’s) as exchangeable, so we can reassign the indices arbitrarily and lose no information</li>
+<li>we believe this for the observations within each level in the group as well (e.g., trials within a participant)</li>
+<li>when we include predictors at the level of the observations, these predictors correspond to experimental manipulations (e.g., attentional load, item number, cloze probability, etc) or maybe also at the group level these predictors indicate characteristics of the levels in the group (e.g., memory span, reading level, etc.)</li>
+<li>the conditional distributions given these explanatory variables would be exchangeable, i.e., our predictors incorporate all the info that is <em>not</em> exchangeable</li>
+<li>this is why <em>item</em> number is an appropriate cluster, but not <em>trial</em> number: if we re-assign the item numbers there is no difference in the expected affects (it’s a <em>factor</em>), but <em>trial</em> number encodes some information that is useful e.g., in terms of fatigue or practice effects</li>
+</ul></li>
+<li><p>even if we aren’t interested in specific cluster-level estimates, hierarchical models allow us to <em>generalise</em> to the underlying population (subjects, items) from which the clusters in the sampel were drawn</p></li>
+<li><p>exchangeability is important in Bayesian stats because of a theorem called the <strong>Representation Theorem</strong></p>
+<ul>
+<li>this theorem states that if a sequence of random variables is exchangeable, then the prior distributions on the parameters in a model are a necessary consequence</li>
+<li>priors are not merely an arbitrary addition to the frequentist modeling approach</li>
+</ul></li>
+</ul>
+</section>
+<section id="hierarchical-model-with-a-normal-likelihood-the-n400-effect" class="level2">
+<h2 class="anchored" data-anchor-id="hierarchical-model-with-a-normal-likelihood-the-n400-effect">Hierarchical model with a normal likelihood: the N400 effect</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">data</span>(<span class="st">"df_eeg"</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>(df_eeg <span class="ot">&lt;-</span> df_eeg <span class="sc">%&gt;%</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">c_cloze =</span> cloze <span class="sc">-</span> <span class="fu">mean</span>(cloze)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 2,863 × 7
+    subj cloze  item  n400 cloze_ans     N c_cloze
+   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;     &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt;
+ 1     1  0        1  7.08         0    44  -0.476
+ 2     1  0.03     2 -0.68         1    44  -0.446
+ 3     1  1        3  1.39        44    44   0.524
+ 4     1  0.93     4 22.8         41    44   0.454
+ 5     1  0        5  1.61         0    44  -0.476
+ 6     1  0        6  3.01         0    44  -0.476
+ 7     1  0.8      7  9.96        35    44   0.324
+ 8     1  0.03     9 -1.85         1    44  -0.446
+ 9     1  0.03    10  8.73         1    44  -0.446
+10     1  0.87    11 10.9         38    44   0.394
+# ℹ 2,853 more rows</code></pre>
+</div>
+</div>
+<section id="complete-pooling-m_cp" class="level3">
+<h3 class="anchored" data-anchor-id="complete-pooling-m_cp">Complete pooling (<span class="math inline">\(M_{cp}\)</span>)</h3>
+<section id="model-assumptions" class="level4">
+<h4 class="anchored" data-anchor-id="model-assumptions">Model assumptions</h4>
+</section>
+<section id="likelihood-and-priors" class="level4">
+<h4 class="anchored" data-anchor-id="likelihood-and-priors">Likelihood and priors</h4>
+</section>
+</section>
+<section id="no-pooling-m_np" class="level3">
+<h3 class="anchored" data-anchor-id="no-pooling-m_np">No pooling (<span class="math inline">\(M_{np}\)</span>)</h3>
+<section id="model-assumptions-1" class="level4">
+<h4 class="anchored" data-anchor-id="model-assumptions-1">Model assumptions</h4>
+</section>
+<section id="likelihood-and-priors-1" class="level4">
+<h4 class="anchored" data-anchor-id="likelihood-and-priors-1">Likelihood and priors</h4>
+</section>
+</section>
+<section id="varying-intercepts-and-varying-slopes-model-m_v" class="level3">
+<h3 class="anchored" data-anchor-id="varying-intercepts-and-varying-slopes-model-m_v">Varying intercepts and varying slopes model (<span class="math inline">\(M_v\)</span>)</h3>
+<section id="model-assumptions-2" class="level4">
+<h4 class="anchored" data-anchor-id="model-assumptions-2">Model assumptions</h4>
+</section>
+<section id="likelihood-and-priors-2" class="level4">
+<h4 class="anchored" data-anchor-id="likelihood-and-priors-2">Likelihood and priors</h4>
+</section>
+</section>
+<section id="correlated-varying-intercept-varying-slopes-model-m_h" class="level3">
+<h3 class="anchored" data-anchor-id="correlated-varying-intercept-varying-slopes-model-m_h">Correlated varying intercept varying slopes model (<span class="math inline">\(M_h\)</span>)</h3>
+<ul>
+<li><p>the model <span class="math inline">\(M_v\)</span> allowed for differences in intercepts (mean voltage) and slopes (effects of cloze) across subjects</p>
+<ul>
+<li>but it has the implicit assumption that these varying intercepts and varying slopes are independent</li>
+</ul></li>
+<li><p>let’s fit a model with correlation between intercepts and slopes</p>
+<ul>
+<li>we do t his by defining a variance-covariance matrix <span class="math inline">\(\sum\)</span> between the by-subject varying intercepts and slopes, and by assuming that both adjustments (intercept and slope) come from a multivariate (in this case, bivariate) normal distribution</li>
+</ul></li>
+<li><p>assumptions:</p>
+<ol type="1">
+<li>EEG averages for N400 spatio-temporal window are normally distributed</li>
+<li>some aspects of the mean signal voltage and of the effect of predicatability dependo n the subject, and these two might be correlated; i.e., we assume group-level intercepts and slopes, and allow a correlation between then by-subject</li>
+<li>there is a linear relationship between cloze and the EEG signal for the trial</li>
+</ol></li>
+<li><p>the likelihood assumes no correlation between group-level intercepts and slopes:</p></li>
+</ul>
+<p><span class="math display">\[
+signal_n \sim \mathit{Normal}(\alpha + u_{subj[n],1} + c\_cloze_n \cdot  (\beta + u_{subj[n],2}),\sigma)
+\]</span></p>
+<ul>
+<li>the correlation is indicated in the priors on the adjustments for intercept <span class="math inline">\(u_1\)</span> and slopes <span class="math inline">\(u_2\)</span></li>
+</ul>
+<p><span class="math display">\[
+\begin{aligned}
+\alpha &amp; \sim \mathit{Normal}(0,10) \\
+\beta  &amp; \sim \mathit{Normal}(0,10) \\
+  \sigma  &amp;\sim \mathit{Normal}_+(0,50)\\
+  {\begin{pmatrix}
+  u_{i,1} \\
+  u_{i,2}
+  \end{pmatrix}}
+&amp;\sim {\mathcal {N}}
+  \left(
+{\begin{pmatrix}
+  0\\
+  0
+\end{pmatrix}}
+,\boldsymbol{\Sigma_u} \right)
+\end{aligned}
+\]</span></p>
+<ul>
+<li><p>to specify a prior for <span class="math inline">\(\sum_u\)</span> we need prors for the standard deviations <span class="math inline">\(\tau_{u_1}\)</span> and <span class="math inline">\(\tau_{u_2}\)</span>, and for their correlation <span class="math inline">\(\rho_u\)</span></p></li>
+<li><p>for the correlation paramter <span class="math inline">\(\rho_u\)</span>, we use the LKJ prior</p>
+<ul>
+<li>basic idea: as its parameter, <span class="math inline">\(\eta\)</span> increases, it will favor correlations closer to zero</li>
+<li>at <span class="math inline">\(\eta = 1\)</span> the LKJ correlation distribution is <em>uninformative</em> (flat)</li>
+<li>at <span class="math inline">\(\eta &lt; 1\)</span> it favours extreme correlations</li>
+<li>we set <span class="math inline">\(eta = 2\)</span> so that we don’t favour extreme correlations, and we still represent our lack of knowledge through the wide spread of the prior between -1 and 1
+<ul>
+<li>i.e., <span class="math inline">\(eta = 2\)</span> gives us a <em>regularizing</em>, relatively uninformative or mildly informative prior</li>
+</ul></li>
+</ul></li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>prior_h <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">0</span>, <span class="dv">10</span>), <span class="at">class =</span> Intercept),</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">0</span>, <span class="dv">10</span>), <span class="at">class =</span> b, <span class="at">coef =</span> c_cloze),</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">0</span>, <span class="dv">50</span>), <span class="at">class =</span> sigma),</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">0</span>, <span class="dv">20</span>),</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">class =</span> sd, <span class="at">coef =</span> Intercept,</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">group =</span> subj</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">0</span>, <span class="dv">20</span>),</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">class =</span> sd, <span class="at">coef =</span> c_cloze,</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">group =</span> subj</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">prior</span>(<span class="fu">lkj</span>(<span class="dv">2</span>), <span class="at">class =</span> cor, <span class="at">group =</span> subj)</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<ul>
+<li>now let’s run a model</li>
+</ul>
+</section>
+</section>
+</section>
+<section id="session-info" class="level1">
+<h1>Session Info</h1>
+<p>Compiled with R version 4.4.0 (2024-04-24) (Puppy Cup) in RStudio version 2023.3.0.386 (Cherry Blossom).</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>R version 4.4.0 (2024-04-24)
+Platform: aarch64-apple-darwin20
+Running under: macOS Ventura 13.2.1
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRblas.0.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: Europe/Berlin
+tzcode source: internal
+
+attached base packages:
+[1] grid      stats     graphics  grDevices utils     datasets  methods  
+[8] base     
+
+other attached packages:
+ [1] rstan_2.32.6         StanHeaders_2.32.7   rootSolve_1.8.2.4   
+ [4] cmdstanr_0.7.1       pdftools_3.4.0       cowplot_1.1.3       
+ [7] lme4_1.1-35.3        Matrix_1.7-0         gridExtra_2.3       
+[10] kableExtra_1.4.0     papaja_0.1.2         tinylabels_0.2.4    
+[13] bcogsci_0.0.0.9000   hypr_0.2.8           tictoc_1.2.1        
+[16] bayesplot_1.11.1     brms_2.21.0          Rcpp_1.0.12         
+[19] bridgesampling_1.1-2 loo_2.7.0            ggplot2_3.5.1       
+[22] extraDistr_1.10.0    purrr_1.0.2          tidyr_1.3.1         
+[25] dplyr_1.1.4          MASS_7.3-60.2       
+
+loaded via a namespace (and not attached):
+ [1] tidyselect_1.2.1     viridisLite_0.4.2    fastmap_1.1.1       
+ [4] TH.data_1.1-2        pracma_2.4.4         tensorA_0.36.2.1    
+ [7] bayestestR_0.13.2    digest_0.6.35        estimability_1.5    
+[10] lifecycle_1.0.4      qpdf_1.3.3           processx_3.8.4      
+[13] survival_3.5-8       magrittr_2.0.3       posterior_1.5.0     
+[16] compiler_4.4.0       rlang_1.1.3          tools_4.4.0         
+[19] utf8_1.2.4           yaml_2.3.8           knitr_1.46          
+[22] askpass_1.2.0        htmlwidgets_1.6.4    pkgbuild_1.4.4      
+[25] curl_5.2.1           xml2_1.3.6           multcomp_1.4-25     
+[28] abind_1.4-5          withr_3.0.0          stats4_4.4.0        
+[31] datawizard_0.10.0    fansi_1.0.6          xtable_1.8-4        
+[34] colorspace_2.1-0     inline_0.3.19        emmeans_1.10.1      
+[37] scales_1.3.0         insight_0.19.10      cli_3.6.2           
+[40] mvtnorm_1.2-4        rmarkdown_2.26       generics_0.1.3      
+[43] RcppParallel_5.1.7   rstudioapi_0.16.0    parameters_0.21.6   
+[46] minqa_1.2.6          stringr_1.5.1        splines_4.4.0       
+[49] parallel_4.4.0       effectsize_0.8.7     matrixStats_1.3.0   
+[52] vctrs_0.6.5          boot_1.3-30          V8_4.4.2            
+[55] sandwich_3.1-0       jsonlite_1.8.8       systemfonts_1.0.6   
+[58] glue_1.7.0           nloptr_2.0.3         ps_1.7.6            
+[61] codetools_0.2-20     distributional_0.4.0 stringi_1.8.4       
+[64] gtable_0.3.5         QuickJSR_1.1.3       munsell_0.5.1       
+[67] tibble_3.2.1         pillar_1.9.0         htmltools_0.5.8.1   
+[70] Brobdingnag_1.2-9    R6_2.5.1             Rdpack_2.6          
+[73] evaluate_0.23        lattice_0.22-6       rbibutils_2.2.16    
+[76] backports_1.4.1      rstantools_2.4.0     svglite_2.1.3       
+[79] coda_0.19-4.1        nlme_3.1-164         checkmate_2.3.1     
+[82] xfun_0.43            zoo_1.8-12           pkgconfig_2.0.3     </code></pre>
+</div>
+</div>
+</section>
+<section id="references" class="level1 unlisted unnumbered" data-visibility="uncounted">
+<h1 class="unlisted unnumbered" data-visibility="uncounted">References</h1>
+<div id="refs" data-custom-style="Bibliography" role="list">
+
+</div>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
