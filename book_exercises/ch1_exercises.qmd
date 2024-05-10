@@ -1,27 +1,39 @@
 ---
 title: "Ch. 1 Exercises"
+author: "Daniela Palleschi"
+format:
+  html:
+    toc: true
+    # html-math-method: katex
+    self-contained: true
+    css: styles.css
+    number-sections: true
+    number-depth: 3
+    code-overflow: wrap
+    code-tools: true
+editor_options: 
+  chunk_output_type: console
+# bibliography: references.json
+biblio-style: apalike
 ---
 
-# Set up {-}
+# Set options {-}
 
-```{r, results = "hide", warning=F,message=F,error=F}
+```{r setup, message = F}
+#| code-fold: true
+
 # set global knit options
-knitr::opts_chunk$set(echo = T, # print chunks?
-                      eval = T, # run chunks?
-                      error = F, # print errors?
-                      warning = F, # print warnings?
-                      message = F, # print messages?
-                      cache = T # cache?; be careful with this!
-                      )
+knitr::opts_chunk$set(echo = T,
+                      eval = T,
+                      error = F,
+                      warning = F,
+                      message = F,
+                      cache = T)
 
 # suppress scientific notation
 options(scipen=999)
 
-# play a sound if error encountered
-options(error = function() {beepr::beep(9)})
-
-# load packages
-## create list of package names
+# list of required packages
 packages <- c( #"SIN", # this package was removed from the CRAN repository
                "MASS", "dplyr", "tidyr", "purrr", "extraDistr", "ggplot2", "loo", "bridgesampling", "brms", "bayesplot", "tictoc", "hypr", "bcogsci", "papaja", "grid", "kableExtra", "gridExtra", "lme4", "cowplot", "pdftools", "cmdstanr", "rootSolve", "rstan"
   )
@@ -49,78 +61,205 @@ select <- dplyr::select
 extract <- rstan::extract
 ```
 
+# Chapter 1 - Introduction
 
-1.1 Practice with pnorm Part 1
+## Exercise 1.1 Practice using the pnorm function - Part 1 {-}
 
-Given a normal distribution with mean 500 and standard deviation 100, use the pnorm function to calculate the probability of obtaining values between 200 and 800 from this distribution.
-
-```{r}
-pnorm(800, mean = 500, sd = 100) - pnorm(200, mean = 500, sd = 100)
-```
-
-1.2 Practice with pnorm Part 2
+> Given a normal distribution with mean 500 and standard deviation 100, use the pnorm function to calculate the probability of obtaining values between 200 and 800 from this distribution.
 
 ```{r}
-pnorm(700, 800, 150, lower.tail=T)
-pnorm(900, 800, 150, lower.tail=F)
-pnorm(800, 800, 150, lower.tail=F)
+pnorm(800, 500, 100) - pnorm(200, 500, 100)
 ```
 
-1.3 Practice with pnorm Part 3
+
+## Exercise 1.2 Practice using the pnorm function - Part 2 {-}
+
+> Calculate the following probabilities. Given a normal distribution with mean 800 and standard deviation 150, what is the probability of obtaining:
+>
+- a score of 700 or less
+- a score of 900 or more
+- a score of 800 or more
 
 ```{r}
-pnorm(550,600,200,lower.tail=T)
-pnorm(800,600,200,lower.tail=T) -
-  pnorm(300,600,200,lower.tail=T)
-pnorm(900,600,200,lower.tail=F)
+# 700 or more
+pnorm(700,800,150)
+# 900, 800 or more
+pnorm(c(900,800), 800,150, lower.tail=F)
 ```
 
-Exercise 1.4 Practice using the qnorm function - Part 1
+
+## Exercise 1.3 Practice using the pnorm function - Part 3 {-}
+
+> Given a normal distribution with mean 600 and standard deviation 200, what is the probability of obtaining:
+>
+- a score of 550 or less.
+- a score between 300 and 800.
+- a score of 900 or more.
 
 ```{r}
-qnorm(c(.1,.9),mean=1,sd=1)
+# 550 or less
+pnorm(q = 550, 
+      m = 600, sd = 200)
+# 300-800
+pnorm(q = 800, 
+      m = 600, sd = 200) - pnorm(q = 300, m = 600, sd = 200)
+# 900 or more
+pnorm(q = 900, 
+      m = 600, sd = 200, lower.tail=F)
 ```
 
-Exercise 1.5 Practice using the qnorm function - Part 2
+## Exercise 1.4 Practice using the qnorm function - Part 1 {-}
+
+> Consider a normal distribution with mean 1 and standard deviation 1. Compute the lower and upper boundaries such that:
+>
+- the area (the probability) to the left of the lower boundary is 0.10.
+- the area (the probability) to the left of the upper boundary is 0.90.
 
 ```{r}
-qnorm(c(.1,.9), mean=650, sd=125)
+# lower bound is .1
+qnorm(p = .1,
+      mean = 1, sd = 1)
+# lower bound is .9
+qnorm(p = .9,
+      mean = 1, sd = 1)
 ```
 
-Exercise 1.6 Practice getting summaries from samples - Part 1
+## Exercise 1.5 Practice using the qnorm function - Part 2 {-}
+
+> Given a normal distribution with mean 650 and standard deviation 125. There exist two quantiles, the lower quantile q1 and the upper quantile q2, that are equidistant from the mean 650, such that the area under the curve of the normal between q1 and q2 is 80%. Find q1 and q2.
+
+```{r}
+q1 <- qnorm(p =.1,
+            mean = 650, sd = 125)
+q2 <- qnorm(p =.9,
+            mean = 650, sd = 125)
+q1; q2
+
+# check this is right
+pnorm(q = q2, 
+      m = 650, sd = 125) - pnorm(q = q1, m = 650, sd = 125)
+```
+
+
+## Exercise 1.6 Practice getting summaries from samples - Part 1 {-}
+
+> Given data that is generated as follows:
 
 ```{r}
 data_gen1 <- rnorm(1000, 300, 200)
-
-# mean
-mean(data_gen1)
-# sd
-sd(data_gen1)
-
-# q1 and q2
-qnorm(c(.1,.9), mean(data_gen1), sd(data_gen1))
-
-hist(data_gen1)
 ```
 
-Exercise 1.7 Practice getting summaries from samples - Part 2
+> Calculate the mean, variance, and the lower quantile q1 and the upper quantile q2, that are equidistant and such that the range of probability between them is 80%.
 
 ```{r}
-# generate data with truncated normal distribution
-data_gen1 <- rtnorm(1000, 300, 200, a = 0)
+mean <- mean(data_gen1)
+sd <- sd(data_gen1)
 
-# mean
-mean(data_gen1)
-# sd
-sd(data_gen1)
+q1 <- qnorm(.1,
+            mean,sd)
+q2 <- qnorm(.9,
+            mean,sd)
+q1; q2
 
-# q1 and q2
-qnorm(c(.1,.9), mean(data_gen1), sd(data_gen1))
-
-hist(data_gen1)
+# check
+pnorm(q2,mean,sd) - pnorm(q1,mean,sd)
 ```
 
-Exercise 1.8 Practice with a variance-covariance matrix for a bivariate distribution
+## Exercise 1.7 Practice getting summaries from samples - Part 2. {-}
 
+> This time we generate the data with a truncated normal distribution from the package extraDistr. The details of this distribution will be discussed later in section 4.1 and in the Box 4.1, but for now we can treat it as an unknown generative process:
 
+```{r}
+data_gen1 <- extraDistr::rtnorm(1000, 300, 200, a = 0)
+```
+
+> Calculate the mean, variance, and the lower quantile q1 and the upper quantile q2, that are equidistant and such that the range of probability between them is 80%.
+
+```{r}
+mean <- mean(data_gen1)
+sd <- sd(data_gen1)
+
+q1 <- qnorm(.1,
+            mean,sd)
+q2 <- qnorm(.9,
+            mean,sd)
+q1; q2
+
+# check
+pnorm(q2,mean,sd) - pnorm(q1,mean,sd)
+```
+
+## Exercise 1.8 Practice with a variance-covariance matrix for a bivariate distribution. {-}
+
+> Suppose that you have a bivariate distribution where one of the two random variables comes from a normal distribution with mean $\mu$X = 600 and standard deviation $\sigma$X = 100, and the other from a normal distribution with mean $\mu$Y = 400 and standard deviation  $\sigma$Y = 50. The correlation $\rho$XY between the two random variables is 0.4. Write down the variance-covariance matrix of this bivariate distribution as a matrix (with numerical values, not mathematical symbols), and then use it to generate 100 pairs of simulated data points.
+
+```{r}
+# generate simulated bivariate data
+
+## define two RVs
+
+## define a VarCorr matrix, where rho = .6, variance
+Sigma <- matrix(c(
+  100^2, 100 * 50 * .4, 
+  100 * 50 * .4, 100^2 
+  ),
+  byrow = F, ncol = 2
+  )
+
+## generate data
+u <- as.data.frame(MASS::mvrnorm(n = 100, mu = c(600,400), Sigma = Sigma))
+head(u, n=3)
+```
+
+> Plot the simulated data such that the relationship between the random variables X and Y is clear. 
+
+```{r, eval = F, echo = F}
+## plot
+plot(u) + title("rho = .4")
+```
+
+> Generate two sets of new data (100 pairs of data points each) with correlation −0.4 and 0, and plot these alongside the plot for the data with correlation 0.4.
+
+```{r}
+# generate simulated bivariate data
+rho <- -.4
+## define a VarCorr matrix, where rho = 0, variance
+Sigma <- matrix(c(
+  100^2, 100 * 50 * rho, 
+  100 * 50 * rho, 100^2 
+  ),
+  byrow = F, ncol = 2
+  )
+
+## generate data
+u4 <- as.data.frame(MASS::mvrnorm(n = 100, mu = c(600,400), Sigma = Sigma))
+
+# generate simulated bivariate data
+rho <- 0
+## define a VarCorr matrix, where rho = 0, variance
+Sigma <- matrix(c(
+  100^2, 100 * 50 * rho, 
+  100 * 50 * rho, 100^2 
+  ),
+  byrow = F, ncol = 2
+  )
+
+## generate data
+u0 <- as.data.frame(MASS::mvrnorm(n = 100, mu = c(600,400), Sigma = Sigma))
+```
+
+```{r, fig.height = 3, fig.width=8}
+ggpubr::ggarrange(
+  ggplot2::ggplot(u, aes(x = V1, y = V2)) +
+    labs(title = "rho = .4") + 
+    geom_point(),
+  ggplot2::ggplot(u4, aes(x = V1, y = V2)) +
+    labs(title ="rho = .-4") + 
+    geom_point(),
+  ggplot2::ggplot(u0, aes(x = V1, y = V2)) +
+    labs(title ="rho = 0") + 
+    geom_point(),
+  nrow = 1, labels = c("A", "B", "C")
+)
+```
 

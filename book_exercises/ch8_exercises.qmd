@@ -38,9 +38,11 @@ head(dat1)
 - Distance=long and Predictability=unpredictable
 - Distance=long and Predictability=predictable
 
-Questions:
+### Questions
 
 > 1. Which contrast coding is needed for such a comparison?
+
+Treatment contrasts, because we're comparing everything to on baseline condition.
 
 ```{r}
 dat1$distance <- as.factor(dat1$distance)
@@ -232,12 +234,12 @@ head(df_polarity)
     g. Grammatical: A man who had a beard was certainly thrifty.
 >
 We will focus only on re-reading time in this data set. Subset the data so that we only have re-reading times in the data frame:
->
+
 ```{r}
 dat2 <- subset(df_polarity, times == "RRT")
 head(dat2)
 ```
->
+
 The comparisons we are interested in are:
 >
 - RQ1: What is the difference in reading time between negative polarity items and positive polarity items?
@@ -331,13 +333,18 @@ contrasts(dat2$condition)
 intercept <- fixef(fit_dat2)["Intercept","Estimate"]
 ```
 
-#### RQ1: dif between positive and negative
+### RQ1: dif between positive and negative
+
+Raw diff's.
 
 ```{r}
 dat2 |> 
   summarise(mean = mean(value),
-            .by = polarity)
+            .by = polarity) |> 
+  pivot_wider(names_from = polarity, values_from = mean) |> 
+  mutate(difference = negative - positive)
 ```
+
 
 ```{r}
 positive <- intercept + fixef(fit_dat2)["conditionrq1","Estimate"]*-0.5
@@ -345,26 +352,148 @@ negative <- intercept + fixef(fit_dat2)["conditionrq1","Estimate"]*0.5
 rq1 <- negative - positive
 ```
 
-Difference.
+Estimated diff.
 
 ```{r}
 rq1
 ```
 
-Slope.
+Slope value.
 
 ```{r}
 fixef(fit_dat2)["conditionrq1","Estimate"]
 ```
 
-#### RQ2: 
+
+
+### RQ2: Grammaticality diff's within negative (cond a vs b+c)
+
+Raw diff's.
+
+```{r}
+dat2 |> 
+  filter(polarity == "negative") |> 
+  summarise(mean = mean(value),
+            .by = gramm) |> 
+  pivot_wider(names_from = gramm, values_from = mean) |> 
+  mutate(difference = gramm - ungramm)
+```
+
+
+```{r}
+est_gramm <- intercept + fixef(fit_dat2)["conditionrq2","Estimate"]*0.5
+est_ungramm <- intercept + fixef(fit_dat2)["conditionrq2","Estimate"]*-0.5
+rq2 <- est_gramm - est_ungramm
+```
+
+Estimated diff.
+
+```{r}
+rq2
+```
+
+Slope value.
+
+```{r}
+fixef(fit_dat2)["conditionrq2","Estimate"]
+```
+
+### RQ3: Ungramm vs. ungramm within negative (cond b vs. c)
+
+Raw diff's.
 
 ```{r}
 dat2 |> 
   summarise(mean = mean(value),
-            .by = condition)
+            .by = condition) |> 
+  filter(condition %in% c("b", "c")) |> 
+  pivot_wider(names_from = condition, values_from = mean) |> 
+  mutate(difference = b - c)
 ```
 
+
+```{r}
+est_b <- intercept + fixef(fit_dat2)["conditionrq3","Estimate"]*0.5
+est_c <- intercept + fixef(fit_dat2)["conditionrq3","Estimate"]*-0.5
+rq3 <- est_b - est_c
+```
+
+Estimated diff.
+
+```{r}
+rq3
+```
+
+Slope value.
+
+```{r}
+fixef(fit_dat2)["conditionrq3","Estimate"]
+```
+
+### RQ4: Grammaticality diff's within positive (cond d vs. e + f)
+
+
+Raw diff's.
+
+```{r}
+dat2 |> 
+  filter(polarity == "positive") |> 
+  summarise(mean = mean(value),
+            .by = gramm) |> 
+  pivot_wider(names_from = gramm, values_from = mean) |> 
+  mutate(difference = gramm - ungramm)
+```
+
+
+```{r}
+est_gramm <- intercept + fixef(fit_dat2)["conditionrq4","Estimate"]*0.5
+est_ungramm <- intercept + fixef(fit_dat2)["conditionrq4","Estimate"]*-0.5
+rq4 <- est_gramm - est_ungramm
+```
+
+Estimated diff.
+
+```{r}
+rq4
+```
+
+Slope value.
+
+```{r}
+fixef(fit_dat2)["conditionrq4","Estimate"]
+```
+
+### RQ5: Gramm vs. gramm within positive (cond e vs. f)
+
+Raw diff's.
+
+```{r}
+dat2 |> 
+  summarise(mean = mean(value),
+            .by = condition) |> 
+  filter(condition %in% c("e", "f")) |> 
+  pivot_wider(names_from = condition, values_from = mean) |> 
+  mutate(difference = e - f)
+```
+
+
+```{r}
+est_e <- intercept + fixef(fit_dat2)["conditionrq5","Estimate"]*0.5
+est_f <- intercept + fixef(fit_dat2)["conditionrq5","Estimate"]*-0.5
+rq5 <- est_e - est_f
+```
+
+Estimated diff.
+
+```{r}
+rq5
+```
+
+Slope value.
+
+```{r}
+fixef(fit_dat2)["conditionrq5","Estimate"]
+```
 
 
 ## **Exercise 8.3** Number of possible comparisons in a single model.
@@ -382,4 +511,11 @@ dat2 |>
 
 > How many comparisons can one code in a model where there are two factors, one with three levels and one with two levels?
 
+Six conditions, two main effects.
+
 > How about a model for a  2 x 2 design?
+
+Four conditions, two main effects.
+- compare main effects (x1)
+- compare nested effects for pred1/pred2 (x2)
+  + and pred2/pred1 (x2)

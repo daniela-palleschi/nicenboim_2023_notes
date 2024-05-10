@@ -120,7 +120,8 @@ contrasts(df_powerpose$hptreat)
 fit_powerpose <- brm(
   change ~ 1 + hptreat,
   data = df_powerpose,
-  family = gaussian()
+  family = gaussian(),
+  file = here::here("models", "exercises", "ch4", "fit_powerpose")
 )
 ```
 
@@ -177,7 +178,8 @@ fit_pupil_prior <- brm(
   ),
     sample_prior = "only",
     # PRIOR PRED DISTR
-    control = list(adapt_delta = .9)
+    control = list(adapt_delta = .9),
+  file = here::here("models", "exercises", "ch4", "fit_pupil_prior")
 )
 ```
 
@@ -204,8 +206,11 @@ fit_pupil <- brm(p_size ~ 1 + c_load,
                    prior(normal(1000,500), class = Intercept),
                    prior(normal(0,1000), class = sigma),
                    prior(normal(0,100), 
-                         class = b, coef = c_load) # predictor prior
-                 )
+                         class = b, coef = c_load
+                         ) # predictor prior
+                   
+                 ),
+                 file = here::here("models", "exercises", "ch4", "fit_pupil_rerun")
                  )
 ```
 
@@ -225,7 +230,9 @@ fit_pupil_prin <- brm(p_size ~ 1 + c_load,
                    prior(normal(0,100), class = sigma),
                    prior(normal(0,100), 
                          class = b, coef = c_load) # predictor prior
-                 )
+                   
+                 ), 
+                 file = here::here("models", "exercises", "ch4", "fit_pupil_prin")
                  )
 ```
 
@@ -260,7 +267,9 @@ fit_pupil <- brm(p_size ~ 1 + c_load + c_trial,
                    prior(normal(0,1000), class = sigma),
                    prior(normal(0,100), 
                          class = b) # predictor prior
-                 )
+                   
+                 ),
+                 file = here::here("models", "exercises", "ch4", "fit_pupil_covariate")
                  )
 ```
 
@@ -296,7 +305,8 @@ fit_press_trial <- brm(rt ~ 1 + c_trial,
     prior(normal(6, 1.5), class = Intercept),
     prior(normal(0, 1), class = sigma),
     prior(normal(0, .01), class = b, coef = c_trial)
-  )
+  ),
+                   file = here::here("models", "exercises", "ch4", "fit_press_trial")
 )
 ```
 
@@ -342,7 +352,8 @@ fit_press_log_trial <- brm(
     prior(normal(6, 1.5), class = Intercept),
     prior(normal(0, 1), class = sigma),
     prior(normal(0, 1), class = b, coef = c_log_trial)
-  )
+  ),
+                   file = here::here("models", "exercises", "ch4", "fit_press_log_trial")
 )
 ```
 
@@ -389,7 +400,8 @@ fit_press_sqrt_trial <- brm(
     prior(normal(6, 1.5), class = Intercept),
     prior(normal(0, 1), class = sigma),
     prior(normal(0, 1), class = b, coef = c_sqrt_trial)
-  )
+  ),
+                   file = here::here("models", "exercises", "ch4", "fit_press_sqrt_trial")
 )
 ```
 

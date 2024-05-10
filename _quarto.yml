@@ -27,21 +27,22 @@ book:
     #   chapters:
     - index.qmd
         # - setup/setup.qmd
-    - part: "Chapter notes"
+    - part: "Book notes"
       chapters:
-        - book_notes/book_notes.qmd
-        - book_notes/ch2.qmd
-    - part: "Chapter notes"
-      chapters:
-          - book_notes/ch8_contrasts_notes.qmd
+        - book_notes/ch1.qmd
+        # - book_notes/ch2.qmd
+        # - book_notes/ch3.qmd
+        # - book_notes/ch4.qmd
+        # - book_notes/ch5.qmd
+        - book_notes/ch8.qmd
     - part: "Book exercises"
       chapters:
-        - book_exercises/book_exercises.qmd
+        - book_exercises/ch1_exercises.qmd
         # - book_exercises/ch2_exercises.qmd
         # - book_exercises/ch3_exercises.qmd
-        - book_exercises/ch4_exercises.qmd
-        - book_exercises/ch5_exercises.qmd
-        - book_exercises/ch6_exercises.qmd
+        # - book_exercises/ch4_exercises.qmd
+        # - book_exercises/ch5_exercises.qmd
+        # - book_exercises/ch6_exercises.qmd
         - book_exercises/ch8_exercises.qmd
     - references.qmd
 
