@@ -1,0 +1,309 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Daniela’s Notes for Nicemboim, Schad, & Vasishth (2024)",
+    "section": "",
+    "text": "1 workbook",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>workbook</span>"
+    ]
+  },
+  {
+    "objectID": "book_notes/ch1.html",
+    "href": "book_notes/ch1.html",
+    "title": "2  Chapter notes",
+    "section": "",
+    "text": "Set up\n# set global knit options\nknitr::opts_chunk$set(echo = T, # print chunks?\n                      eval = T, # run chunks?\n                      error = F, # print errors?\n                      warning = F, # print warnings?\n                      message = F, # print messages?\n                      cache = T # cache?; be careful with this!\n                      )\n\n# suppress scientific notation\noptions(scipen=999)\n\n# play a sound if error encountered\noptions(error = function() {beepr::beep(9)})\n\n# load packages\n## create list of package names\npackages &lt;- c( #\"SIN\", # this package was removed from the CRAN repository\n               \"MASS\", \"dplyr\", \"tidyr\", \"purrr\", \"extraDistr\", \"ggplot2\", \"loo\", \"bridgesampling\", \"brms\", \"bayesplot\", \"tictoc\", \"hypr\", \"bcogsci\", \"papaja\", \"grid\", \"kableExtra\", \"gridExtra\", \"lme4\", \"cowplot\", \"pdftools\", \"cmdstanr\", \"rootSolve\", \"rstan\"\n  )\n\n# NB: if you haven't already installed bcogsci through devtools, it won't be loaded\n## Now load or install & load all\npackage.check &lt;- lapply(\n  packages,\n  FUN = function(x) {\n    if (!require(x, character.only = TRUE)) {\n      install.packages(x, dependencies = TRUE)\n      library(x, character.only = TRUE)\n    }\n  }\n)\n\n# this is also required, taken from the textbook\n\n## Save compiled models:\nrstan_options(auto_write = FALSE)\n## Parallelize the chains using all the cores:\noptions(mc.cores = parallel::detectCores())\n# To solve some conflicts between packages\nselect &lt;- dplyr::select\nextract &lt;- rstan::extract",
+    "crumbs": [
+      "Book notes",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Chapter notes</span>"
+    ]
+  },
+  {
+    "objectID": "book_notes/ch1.html#probability",
+    "href": "book_notes/ch1.html#probability",
+    "title": "2  Chapter notes",
+    "section": "3.1 Probability",
+    "text": "3.1 Probability\nFrequency-based versus uncertain-belief perspective of probability:\n\nrepeatable events, like rolling a die and getting a 6, are frequentist because probability is related to the frequency at which we’d observe an outcome given repeated observations\none-of-a-kind events, like earthquakes, don’t work with this idea of probability\n\n\nthe probability of an earthquake expresses our uncertainty about an event happening\nwe also be uncertain about how probable an event is: being 90% sure something is 50% likely to happen\nthis is what we’re interested in: how uncertain we are of an estimate\n\nIn Bayesian analysis, we want to express our uncertainty about the probability of observing an outcome (prior distribution).\n\n3.1.1 Conditional probability and Bayes’ rule\n\nA = “the streets are wet”\nB = “it was raining”\nP(A|B) = the probability of A given B\nP(A,B) = P(A|B)P(B) (the probability of A and B happening)\n\n\n\n3.1.2 Law of total probability\n\ndunno",
+    "crumbs": [
+      "Book notes",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Chapter notes</span>"
+    ]
+  },
+  {
+    "objectID": "book_notes/ch1.html#discrete-random-variables",
+    "href": "book_notes/ch1.html#discrete-random-variables",
+    "title": "2  Chapter notes",
+    "section": "3.2 Discrete random variables",
+    "text": "3.2 Discrete random variables\nGenerating random sequences of simulated data with a binomial distribution. Imagine a cloze task, where we consider a particular word a success (1) and any other word a failure (0). If we run the experiment 20 times with a sample size of 10, the cloze probabilities for these 20 experiments would be:\nrbinom(10, n = 20, prob = .5)\n[1] 7 7 7 5 6 7 6 4 5 3 8 2 2 5 4 1 6 6 3 7\nFor discrete random variables such as the binomial, the probability distribution p(y|\\(\\theta\\)) is called a probability mass function (PMF) . The PMF defines the probability of each possible outcome. With n = 10 trials, there are 11 possible outcomes (0, 1, 2,…10 succeses). Which outcome is most probable depends on the parameter \\(\\theta\\) that represents the probability of success. Above, we set \\(\\theta\\) to 0.5.\n\n3.2.1 The mean and variance of the binomial distribution\nIn real exerimental situations we never know the true value of \\(\\theta\\) (probability of an outcome), but it can be derived from the data: \\(\\theta\\) hat = k/n, where k = number of observed successess, n = number of trials, and \\(\\theta\\) hat = observed proportion of successes. \\(\\theta\\) hat = maximum likelihood estimate of the true but unknown parameter \\(\\theta\\). Basically, the mean of the binomial distribution. The variance can also be estimated by computing (n(\\(\\theta\\)))(1 - \\(\\theta\\)). These estimates can be be used for statistical inference.\n\n\n3.2.2 Compute probability of a particular outcome (discrete): dibinom\ndbinom calculates probability of k successes out of n given a particular \\(\\theta\\).\n\ndbinom(5, size = 10, prob = .5)\n\n[1] 0.2460938\n\ndbinom(5, size = 10, prob = .1)\n\n[1] 0.001488035\n\ndbinom(5, size = 10, prob = .9)\n\n[1] 0.001488035\n\n\nWith continuous data, the probability of obtaining an exact value will always be zero. We’ll come ot this later.\n\n\n3.2.3 Compute cumulative probability: pbinom\nThe cumulative distribution function (CDF): essentially the sum of all probabilities of the values of k you are interested in. E.g., the probability of observing 2 successes or fewer (0, 1, or 2) is:\n\n# sum of probabilities for exact k's\ndbinom(0, size = 10, prob = .5) +\n  dbinom(1, size = 10, prob = .5) +\n  dbinom(2, size = 10, prob = .5)\n\n[1] 0.0546875\n\n# or\nsum(dbinom(0:2, size = 10, prob = .5))\n\n[1] 0.0546875\n\n# or use pbinom()\npbinom(2, size = 10, prob = 0.5, lower.tail = TRUE)\n\n[1] 0.0546875\n\n# conversely, what is the $\\theta$ of observing THREE successes or more?\npbinom(2, size = 10, prob = 0.5, lower.tail = F)\n\n[1] 0.9453125\n\n# or\nsum(dbinom(3:10, size = 10, prob = .5))\n\n[1] 0.9453125\n\n# the probability of observing 10 or fewer successes (out of 10 trials)\npbinom(10, size = 10, prob = 0.5, lower.tail = TRUE)\n\n[1] 1\n\n\n\n\n3.2.4 Compute the inverse of the CDF (quantile function): qbinom\nThe quantile function (the inverse CDF) obtains the value of k (the quantile) given the probability of obtaining k or less than k successes given some specific probability value p:\n\n# reverse of dbinom(2,10,.5) would be:\nqbinom(0.0546875, size=10, prob=.5)\n\n[1] 2\n\n\n\n3.2.4.1 Generage simulated data from binomial distribtion: rbinom\n\n# given 1 iteration of 10 trials where p = .5, produce a random value of k\nrbinom(1, 10, .5)\n\n[1] 6",
+    "crumbs": [
+      "Book notes",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Chapter notes</span>"
+    ]
+  },
+  {
+    "objectID": "book_notes/ch1.html#continuous-random-variables",
+    "href": "book_notes/ch1.html#continuous-random-variables",
+    "title": "2  Chapter notes",
+    "section": "3.3 Continuous random variables",
+    "text": "3.3 Continuous random variables\nImagine vector of reading times data with a normal distribution, defined by its mean and its sd. The probability density function (PDF) for particular values of mean and sd (assuming a normal distribution) can be calculated using dnorm. The CDF can be found using pnorm, and the inverse CDF using qnorm. These are 3 different ways of looking at the infrmation.\n\n# p of observing a mean of 250ms when the true mean is 500 & sd = 100 (PDF)\ndnorm(400,mean = 500, sd = 100)\n\n[1] 0.002419707\n\n# p of observing 400ms *or lower* when the true mean is 500 & sd = 100 (CDF)\npnorm(400,mean = 500, sd = 100)\n\n[1] 0.1586553\n\n# k with a CDF of 0.1586553 when the true mean is 500 & sd = 100 (inverse CDF)\nqnorm(0.1586553, mean = 500, sd = 100)\n\n[1] 400\n\n\nQuestion: what is the probability of observing values between 200 and 700 from a normal distribution where mean = 500 and sd = 100?\n\npnorm(700,500,100) - pnorm(200,500,100)\n\n[1] 0.9759\n\n\nWith continuous data, it is only meaningful to ask about probabilities between two point values (e.g., probability that Y lies between a and b).\nWhat is the quantile q such that the probability of observing that value or something less (or more) than it is 0.975 (given the normal(500,100) distribution)?\n\nqnorm(0.975, m=500, sd=100)\n\n[1] 695.9964\n\n\nNext task: generate simulated data. generate 10 data points using the rnorm function and use this simulated data to compute the mean and stanrdard devaition.\n\nx &lt;- rnorm(10,500,100)\nmean(x)\n\n[1] 600.5572\n\nsd(x)\n\n[1] 78.86937\n\n# can also computer lower and upper bounds of 95% CIs\nquantile(x, probs = c(.025, .975))\n\n    2.5%    97.5% \n469.3127 720.3811 \n\n\n\n3.3.1 An important distinction: probability vs. densitiy in continuous random variables\nThe probability density function (PDF):\n\n# density with default m = 0 and sd = 1\ndnorm(1)\n\n[1] 0.2419707\n\n\nThis is not the probability of observing 1 in this distribution, as the probability of a single value in a continous distribtion will always be 0. This is becaue probability in a continuous distritubion is the area under the curve, and at a single point there is no area under the curve (i.e., p = 0). The pnorm function allows us to find the cumulative distribution function (CDF) for the normal distribution.\nFor example, the probability of obseving a value etween +/-2 in a normal distribution with mean 0 and sd 1:\n\npnorm(2, m = 0, sd = 1) - pnorm(-2, m = 0, sd = 1)\n\n[1] 0.9544997\n\n\nFor discrete random variables, the situation is different. These have a probability mass function (PMF), the binomial distribution that we saw before. Here, the PMF maps the possible y values to the probabilities of those exact values occurring.\n\ndbinom(2,size=10,prob=.5)\n\n[1] 0.04394531\n\n\n\n\n3.3.2 Truncating a normal distribution\nRefers to positive values only (truncating at 0).",
+    "crumbs": [
+      "Book notes",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Chapter notes</span>"
+    ]
+  },
+  {
+    "objectID": "book_notes/ch1.html#bivariate-and-multivariate-distributions",
+    "href": "book_notes/ch1.html#bivariate-and-multivariate-distributions",
+    "title": "2  Chapter notes",
+    "section": "3.4 Bivariate and multivariate distributions",
+    "text": "3.4 Bivariate and multivariate distributions\nConsider a case where two discrete responses were recorded: a binary yes/no response, and a Likert acceptability rating (1-7).\nThe joint probability mass function is the joint PMF of two random variables.\nLet’s play around with some such data:\n\n# run if package is not loaded\n# library(bcogsci)\ndata(\"df_discreteagrmt\")\n\n\n3.4.0.1 Marginal distributions\nThe marginal distribution of each pair of values (let’s say x = the binary response, y = the Likert response) is computed by summing up\n\nrowSums(probs)\n\nobject probs is not defined in the book\n\n\n3.4.1 Generate simulated bivariate (multivariate) data\nSuppose we want to generate 100 pairs of correlated data, with correlation rho = 0.6. The two random variables have mean 0, and standard deviations 5 and 10 respectively.\n\n## define a variance-covariance matrix:\nSigma &lt;- matrix(c(5^2, 5 * 10 * .6, 5 * 10 * .6, 10^2),\n  byrow = FALSE, ncol = 2\n)\n## generate data:\nu &lt;- mvrnorm(\n  n = 100,\n  mu = c(0, 0),\n  Sigma = Sigma\n)\nhead(u, n = 3)\n\n           [,1]      [,2]\n[1,]   4.187286  8.903810\n[2,] -12.405573 -7.363094\n[3,]   2.121652 -6.667865\n\n\n\n# plot the data\nggplot(tibble(u_1 = u[, 1], u_2 = u[, 2]), aes(u_1, u_2)) +\n  geom_point()",
+    "crumbs": [
+      "Book notes",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Chapter notes</span>"
+    ]
+  },
+  {
+    "objectID": "book_notes/ch1.html#an-important-concept-the-marginal-likelihood-integrating-out-a-parameter",
+    "href": "book_notes/ch1.html#an-important-concept-the-marginal-likelihood-integrating-out-a-parameter",
+    "title": "2  Chapter notes",
+    "section": "3.5 An important concept: the marginal likelihood (integrating out a parameter)",
+    "text": "3.5 An important concept: the marginal likelihood (integrating out a parameter)",
+    "crumbs": [
+      "Book notes",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Chapter notes</span>"
+    ]
+  },
+  {
+    "objectID": "book_notes/ch8.html",
+    "href": "book_notes/ch8.html",
+    "title": "3  Contrast Coding",
+    "section": "",
+    "text": "Set up\n# set global knit options\nknitr::opts_chunk$set(echo = T, # print chunks?\n                      eval = T, # run chunks?\n                      error = F, # print errors?\n                      warning = F, # print warnings?\n                      message = F, # print messages?\n                      cache = T # cache?; be careful with this!\n                      )\n\n# suppress scientific notation\noptions(scipen=999)\n\n# play a sound if error encountered\noptions(error = function() {beepr::beep(9)})\n\n# load packages\n## create list of package names\npackages &lt;- c( #\"SIN\", # this package was removed from the CRAN repository\n               \"MASS\", \"dplyr\", \"tidyr\", \"purrr\", \"extraDistr\", \"ggplot2\", \"loo\", \"bridgesampling\", \"brms\", \"bayesplot\", \"tictoc\", \"hypr\", \"bcogsci\", \"papaja\", \"grid\", \"kableExtra\", \"gridExtra\", \"lme4\", \"cowplot\", \"pdftools\", \"cmdstanr\", \"rootSolve\", \"rstan\"\n  )\n\n# NB: if you haven't already installed bcogsci through devtools, it won't be loaded\n## Now load or install & load all\npackage.check &lt;- lapply(\n  packages,\n  FUN = function(x) {\n    if (!require(x, character.only = TRUE)) {\n      install.packages(x, dependencies = TRUE)\n      library(x, character.only = TRUE)\n    }\n  }\n)\n\n# this is also required, taken from the textbook\n\n## Save compiled models:\nrstan_options(auto_write = FALSE)\n## Parallelize the chains using all the cores:\noptions(mc.cores = parallel::detectCores())\n# To solve some conflicts between packages\nselect &lt;- dplyr::select\nextract &lt;- rstan::extract",
+    "crumbs": [
+      "Book notes",
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Contrast Coding</span>"
+    ]
+  },
+  {
+    "objectID": "book_notes/ch8.html#data",
+    "href": "book_notes/ch8.html#data",
+    "title": "3  Contrast Coding",
+    "section": "3.1 Data",
+    "text": "3.1 Data\nLoad in a simulated dataset with RTs for two conditions: F1 and F2.\n\ndata(\"df_contrasts1\")\n\n\nhead(df_contrasts1)\n\n# A tibble: 6 × 3\n  F        DV    id\n  &lt;fct&gt; &lt;dbl&gt; &lt;int&gt;\n1 F1    0.636     1\n2 F1    0.841     2\n3 F1    0.555     3\n4 F1    1.03      4\n5 F1    0.938     5\n6 F2    0.123     6",
+    "crumbs": [
+      "Book notes",
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Contrast Coding</span>"
+    ]
+  },
+  {
+    "objectID": "book_notes/ch8.html#basic-concepts-illustrated-using-a-two-level-factor",
+    "href": "book_notes/ch8.html#basic-concepts-illustrated-using-a-two-level-factor",
+    "title": "3  Contrast Coding",
+    "section": "3.2 Basic concepts illustrated using a two-level factor",
+    "text": "3.2 Basic concepts illustrated using a two-level factor\n\n3.2.1 Default contrast coding\n\n\n3.2.2 Defining comparions\n\n\n3.2.3 Sum contrasts\n\n\n3.2.4 Cell means parameterization",
+    "crumbs": [
+      "Book notes",
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Contrast Coding</span>"
+    ]
+  },
+  {
+    "objectID": "book_notes/ch8.html#the-hypohtesis-matrix",
+    "href": "book_notes/ch8.html#the-hypohtesis-matrix",
+    "title": "3  Contrast Coding",
+    "section": "3.3 The hypohtesis matrix",
+    "text": "3.3 The hypohtesis matrix\n\n3.3.1 Sum contrasts\n\n\n3.3.2 They hypothesis matrix\n\n\n3.3.3 Generating contrasts: the hypr package\n\nto use the 4-step procedure (i.e., to flexibly design contrasts to estimate specific comparisons), the authors developed the hypr package\n\ncan specify desired comparisons and generate contrast matrices",
+    "crumbs": [
+      "Book notes",
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Contrast Coding</span>"
+    ]
+  },
+  {
+    "objectID": "book_notes/ch8.html#other-types-of-contrasts",
+    "href": "book_notes/ch8.html#other-types-of-contrasts",
+    "title": "3  Contrast Coding",
+    "section": "3.4 Other types of contrasts:",
+    "text": "3.4 Other types of contrasts:\n\n3.4.1 Repeated contrasts\n\n\n3.4.2 Helmert contrasts\n\n\n3.4.3 Contrasts in linear regression\n\n\n3.4.4 Plynomial contrasts\n\n\n3.4.5 An alternative to contrasts",
+    "crumbs": [
+      "Book notes",
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Contrast Coding</span>"
+    ]
+  },
+  {
+    "objectID": "book_notes/ch8.html#what-makes-a-good-set-of-contrasts",
+    "href": "book_notes/ch8.html#what-makes-a-good-set-of-contrasts",
+    "title": "3  Contrast Coding",
+    "section": "3.5 What makes a good set of contrasts",
+    "text": "3.5 What makes a good set of contrasts\n\n3.5.1 Centered contrasts\n\n\n3.5.2 Orthogonal contrasts\n\n\n3.5.3 The role of the intercept",
+    "crumbs": [
+      "Book notes",
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Contrast Coding</span>"
+    ]
+  },
+  {
+    "objectID": "book_notes/ch8.html#computing-condition-means",
+    "href": "book_notes/ch8.html#computing-condition-means",
+    "title": "3  Contrast Coding",
+    "section": "3.6 Computing condition means",
+    "text": "3.6 Computing condition means",
+    "crumbs": [
+      "Book notes",
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Contrast Coding</span>"
+    ]
+  },
+  {
+    "objectID": "book_notes/ch8.html#summary",
+    "href": "book_notes/ch8.html#summary",
+    "title": "3  Contrast Coding",
+    "section": "3.7 Summary",
+    "text": "3.7 Summary",
+    "crumbs": [
+      "Book notes",
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Contrast Coding</span>"
+    ]
+  },
+  {
+    "objectID": "book_exercises/ch1_exercises.html",
+    "href": "book_exercises/ch1_exercises.html",
+    "title": "4  Ch. 1 Exercises",
+    "section": "",
+    "text": "Set options\nCode\n# set global knit options\nknitr::opts_chunk$set(echo = T,\n                      eval = T,\n                      error = F,\n                      warning = F,\n                      message = F,\n                      cache = T)\n\n# suppress scientific notation\noptions(scipen=999)\n\n# list of required packages\npackages &lt;- c( #\"SIN\", # this package was removed from the CRAN repository\n               \"MASS\", \"dplyr\", \"tidyr\", \"purrr\", \"extraDistr\", \"ggplot2\", \"loo\", \"bridgesampling\", \"brms\", \"bayesplot\", \"tictoc\", \"hypr\", \"bcogsci\", \"papaja\", \"grid\", \"kableExtra\", \"gridExtra\", \"lme4\", \"cowplot\", \"pdftools\", \"cmdstanr\", \"rootSolve\", \"rstan\"\n  )\n\n# NB: if you haven't already installed bcogsci through devtools, it won't be loaded\n## Now load or install & load all\npackage.check &lt;- lapply(\n  packages,\n  FUN = function(x) {\n    if (!require(x, character.only = TRUE)) {\n      install.packages(x, dependencies = TRUE)\n      library(x, character.only = TRUE)\n    }\n  }\n)\n\n# this is also required, taken from the textbook\n\n## Save compiled models:\nrstan_options(auto_write = FALSE)\n## Parallelize the chains using all the cores:\noptions(mc.cores = parallel::detectCores())\n# To solve some conflicts between packages\nselect &lt;- dplyr::select\nextract &lt;- rstan::extract",
+    "crumbs": [
+      "Book exercises",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Ch. 1 Exercises</span>"
+    ]
+  },
+  {
+    "objectID": "book_exercises/ch1_exercises.html#exercise-1.1-practice-using-the-pnorm-function---part-1",
+    "href": "book_exercises/ch1_exercises.html#exercise-1.1-practice-using-the-pnorm-function---part-1",
+    "title": "4  Ch. 1 Exercises",
+    "section": "Exercise 1.1 Practice using the pnorm function - Part 1",
+    "text": "Exercise 1.1 Practice using the pnorm function - Part 1\n\nGiven a normal distribution with mean 500 and standard deviation 100, use the pnorm function to calculate the probability of obtaining values between 200 and 800 from this distribution.\n\n\npnorm(800, 500, 100) - pnorm(200, 500, 100)\n\n[1] 0.9973002",
+    "crumbs": [
+      "Book exercises",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Ch. 1 Exercises</span>"
+    ]
+  },
+  {
+    "objectID": "book_exercises/ch1_exercises.html#exercise-1.2-practice-using-the-pnorm-function---part-2",
+    "href": "book_exercises/ch1_exercises.html#exercise-1.2-practice-using-the-pnorm-function---part-2",
+    "title": "4  Ch. 1 Exercises",
+    "section": "Exercise 1.2 Practice using the pnorm function - Part 2",
+    "text": "Exercise 1.2 Practice using the pnorm function - Part 2\n\nCalculate the following probabilities. Given a normal distribution with mean 800 and standard deviation 150, what is the probability of obtaining:\n\na score of 700 or less\na score of 900 or more\na score of 800 or more\n\n\n\n# 700 or more\npnorm(700,800,150)\n\n[1] 0.2524925\n\n# 900, 800 or more\npnorm(c(900,800), 800,150, lower.tail=F)\n\n[1] 0.2524925 0.5000000",
+    "crumbs": [
+      "Book exercises",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Ch. 1 Exercises</span>"
+    ]
+  },
+  {
+    "objectID": "book_exercises/ch1_exercises.html#exercise-1.3-practice-using-the-pnorm-function---part-3",
+    "href": "book_exercises/ch1_exercises.html#exercise-1.3-practice-using-the-pnorm-function---part-3",
+    "title": "4  Ch. 1 Exercises",
+    "section": "Exercise 1.3 Practice using the pnorm function - Part 3",
+    "text": "Exercise 1.3 Practice using the pnorm function - Part 3\n\nGiven a normal distribution with mean 600 and standard deviation 200, what is the probability of obtaining:\n\na score of 550 or less.\na score between 300 and 800.\na score of 900 or more.\n\n\n\n# 550 or less\npnorm(q = 550, \n      m = 600, sd = 200)\n\n[1] 0.4012937\n\n# 300-800\npnorm(q = 800, \n      m = 600, sd = 200) - pnorm(q = 300, m = 600, sd = 200)\n\n[1] 0.7745375\n\n# 900 or more\npnorm(q = 900, \n      m = 600, sd = 200, lower.tail=F)\n\n[1] 0.0668072",
+    "crumbs": [
+      "Book exercises",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Ch. 1 Exercises</span>"
+    ]
+  },
+  {
+    "objectID": "book_exercises/ch1_exercises.html#exercise-1.4-practice-using-the-qnorm-function---part-1",
+    "href": "book_exercises/ch1_exercises.html#exercise-1.4-practice-using-the-qnorm-function---part-1",
+    "title": "4  Ch. 1 Exercises",
+    "section": "Exercise 1.4 Practice using the qnorm function - Part 1",
+    "text": "Exercise 1.4 Practice using the qnorm function - Part 1\n\nConsider a normal distribution with mean 1 and standard deviation 1. Compute the lower and upper boundaries such that:\n\nthe area (the probability) to the left of the lower boundary is 0.10.\nthe area (the probability) to the left of the upper boundary is 0.90.\n\n\n\n# lower bound is .1\nqnorm(p = .1,\n      mean = 1, sd = 1)\n\n[1] -0.2815516\n\n# lower bound is .9\nqnorm(p = .9,\n      mean = 1, sd = 1)\n\n[1] 2.281552",
+    "crumbs": [
+      "Book exercises",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Ch. 1 Exercises</span>"
+    ]
+  },
+  {
+    "objectID": "book_exercises/ch1_exercises.html#exercise-1.5-practice-using-the-qnorm-function---part-2",
+    "href": "book_exercises/ch1_exercises.html#exercise-1.5-practice-using-the-qnorm-function---part-2",
+    "title": "4  Ch. 1 Exercises",
+    "section": "Exercise 1.5 Practice using the qnorm function - Part 2",
+    "text": "Exercise 1.5 Practice using the qnorm function - Part 2\n\nGiven a normal distribution with mean 650 and standard deviation 125. There exist two quantiles, the lower quantile q1 and the upper quantile q2, that are equidistant from the mean 650, such that the area under the curve of the normal between q1 and q2 is 80%. Find q1 and q2.\n\n\nq1 &lt;- qnorm(p =.1,\n            mean = 650, sd = 125)\nq2 &lt;- qnorm(p =.9,\n            mean = 650, sd = 125)\nq1; q2\n\n[1] 489.8061\n\n\n[1] 810.1939\n\n# check this is right\npnorm(q = q2, \n      m = 650, sd = 125) - pnorm(q = q1, m = 650, sd = 125)\n\n[1] 0.8",
+    "crumbs": [
+      "Book exercises",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Ch. 1 Exercises</span>"
+    ]
+  },
+  {
+    "objectID": "book_exercises/ch1_exercises.html#exercise-1.6-practice-getting-summaries-from-samples---part-1",
+    "href": "book_exercises/ch1_exercises.html#exercise-1.6-practice-getting-summaries-from-samples---part-1",
+    "title": "4  Ch. 1 Exercises",
+    "section": "Exercise 1.6 Practice getting summaries from samples - Part 1",
+    "text": "Exercise 1.6 Practice getting summaries from samples - Part 1\n\nGiven data that is generated as follows:\n\n\ndata_gen1 &lt;- rnorm(1000, 300, 200)\n\n\nCalculate the mean, variance, and the lower quantile q1 and the upper quantile q2, that are equidistant and such that the range of probability between them is 80%.\n\n\nmean &lt;- mean(data_gen1)\nsd &lt;- sd(data_gen1)\n\nq1 &lt;- qnorm(.1,\n            mean,sd)\nq2 &lt;- qnorm(.9,\n            mean,sd)\nq1; q2\n\n[1] 39.87314\n\n\n[1] 558.3504\n\n# check\npnorm(q2,mean,sd) - pnorm(q1,mean,sd)\n\n[1] 0.8",
+    "crumbs": [
+      "Book exercises",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Ch. 1 Exercises</span>"
+    ]
+  },
+  {
+    "objectID": "book_exercises/ch1_exercises.html#exercise-1.7-practice-getting-summaries-from-samples---part-2.",
+    "href": "book_exercises/ch1_exercises.html#exercise-1.7-practice-getting-summaries-from-samples---part-2.",
+    "title": "4  Ch. 1 Exercises",
+    "section": "Exercise 1.7 Practice getting summaries from samples - Part 2.",
+    "text": "Exercise 1.7 Practice getting summaries from samples - Part 2.\n\nThis time we generate the data with a truncated normal distribution from the package extraDistr. The details of this distribution will be discussed later in section 4.1 and in the Box 4.1, but for now we can treat it as an unknown generative process:\n\n\ndata_gen1 &lt;- extraDistr::rtnorm(1000, 300, 200, a = 0)\n\n\nCalculate the mean, variance, and the lower quantile q1 and the upper quantile q2, that are equidistant and such that the range of probability between them is 80%.\n\n\nmean &lt;- mean(data_gen1)\nsd &lt;- sd(data_gen1)\n\nq1 &lt;- qnorm(.1,\n            mean,sd)\nq2 &lt;- qnorm(.9,\n            mean,sd)\nq1; q2\n\n[1] 107.9861\n\n\n[1] 543.0663\n\n# check\npnorm(q2,mean,sd) - pnorm(q1,mean,sd)\n\n[1] 0.8",
+    "crumbs": [
+      "Book exercises",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Ch. 1 Exercises</span>"
+    ]
+  },
+  {
+    "objectID": "book_exercises/ch1_exercises.html#exercise-1.8-practice-with-a-variance-covariance-matrix-for-a-bivariate-distribution.",
+    "href": "book_exercises/ch1_exercises.html#exercise-1.8-practice-with-a-variance-covariance-matrix-for-a-bivariate-distribution.",
+    "title": "4  Ch. 1 Exercises",
+    "section": "Exercise 1.8 Practice with a variance-covariance matrix for a bivariate distribution.",
+    "text": "Exercise 1.8 Practice with a variance-covariance matrix for a bivariate distribution.\n\nSuppose that you have a bivariate distribution where one of the two random variables comes from a normal distribution with mean \\(\\mu\\)X = 600 and standard deviation \\(\\sigma\\)X = 100, and the other from a normal distribution with mean \\(\\mu\\)Y = 400 and standard deviation \\(\\sigma\\)Y = 50. The correlation \\(\\rho\\)XY between the two random variables is 0.4. Write down the variance-covariance matrix of this bivariate distribution as a matrix (with numerical values, not mathematical symbols), and then use it to generate 100 pairs of simulated data points.\n\n\n# generate simulated bivariate data\n\n## define two RVs\n\n## define a VarCorr matrix, where rho = .6, variance\nSigma &lt;- matrix(c(\n  100^2, 100 * 50 * .4, \n  100 * 50 * .4, 100^2 \n  ),\n  byrow = F, ncol = 2\n  )\n\n## generate data\nu &lt;- as.data.frame(MASS::mvrnorm(n = 100, mu = c(600,400), Sigma = Sigma))\nhead(u, n=3)\n\n        V1       V2\n1 685.4599 436.1904\n2 518.5808 408.2062\n3 815.1834 457.0416\n\n\n\nPlot the simulated data such that the relationship between the random variables X and Y is clear.\n\n\nGenerate two sets of new data (100 pairs of data points each) with correlation −0.4 and 0, and plot these alongside the plot for the data with correlation 0.4.\n\n\n# generate simulated bivariate data\nrho &lt;- -.4\n## define a VarCorr matrix, where rho = 0, variance\nSigma &lt;- matrix(c(\n  100^2, 100 * 50 * rho, \n  100 * 50 * rho, 100^2 \n  ),\n  byrow = F, ncol = 2\n  )\n\n## generate data\nu4 &lt;- as.data.frame(MASS::mvrnorm(n = 100, mu = c(600,400), Sigma = Sigma))\n\n# generate simulated bivariate data\nrho &lt;- 0\n## define a VarCorr matrix, where rho = 0, variance\nSigma &lt;- matrix(c(\n  100^2, 100 * 50 * rho, \n  100 * 50 * rho, 100^2 \n  ),\n  byrow = F, ncol = 2\n  )\n\n## generate data\nu0 &lt;- as.data.frame(MASS::mvrnorm(n = 100, mu = c(600,400), Sigma = Sigma))\n\n\nggpubr::ggarrange(\n  ggplot2::ggplot(u, aes(x = V1, y = V2)) +\n    labs(title = \"rho = .4\") + \n    geom_point(),\n  ggplot2::ggplot(u4, aes(x = V1, y = V2)) +\n    labs(title =\"rho = .-4\") + \n    geom_point(),\n  ggplot2::ggplot(u0, aes(x = V1, y = V2)) +\n    labs(title =\"rho = 0\") + \n    geom_point(),\n  nrow = 1, labels = c(\"A\", \"B\", \"C\")\n)",
+    "crumbs": [
+      "Book exercises",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Ch. 1 Exercises</span>"
+    ]
+  },
+  {
+    "objectID": "book_exercises/ch8_exercises.html",
+    "href": "book_exercises/ch8_exercises.html",
+    "title": "5  Ch. 8 Exercises",
+    "section": "",
+    "text": "5.1 Exercise 8.1 Contrast coding for a four-condition design\nlibrary(bcogsci)\ndata(\"df_persianE1\")\ndat1 &lt;- df_persianE1\nhead(dat1)\n\n    subj item   rt distance   predability\n60     4    6  568    short   predictable\n94     4   17  517     long unpredictable\n146    4   22  675    short   predictable\n185    4    5  575     long unpredictable\n215    4    3  581     long   predictable\n285    4    7 1171     long   predictable",
+    "crumbs": [
+      "Book exercises",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Ch. 8 Exercises</span>"
+    ]
+  },
+  {
+    "objectID": "book_exercises/ch8_exercises.html#exercise-8.1-contrast-coding-for-a-four-condition-design",
+    "href": "book_exercises/ch8_exercises.html#exercise-8.1-contrast-coding-for-a-four-condition-design",
+    "title": "5  Ch. 8 Exercises",
+    "section": "",
+    "text": "Load the following data. These data are from Experiment 1 in a set of reading studies on Persian (Safavi, Husain, and Vasishth 2016). This is a self-paced reading study on particle-verb constructions, with a 2 x 2 design: distance (short, long) and predictability (predictable, unpredictable). The data are from a critical region in the sentence. All the data from the Safavi, Husain, and Vasishth (2016) paper are available from https://github.com/vasishth/SafaviEtAl2016.\n\n\n\nThe four conditions are:\n\nDistance=short and Predictability=unpredictable\nDistance=short and Predictability=predictable\nDistance=long and Predictability=unpredictable\nDistance=long and Predictability=predictable\n\nThe researcher wants to do the following sets of comparisons between condition means:\nCompare the condition labeled Distance=short and Predictability=unpredictable with each of the following conditions:\n\nDistance=short and Predictability=predictable\nDistance=long and Predictability=unpredictable\nDistance=long and Predictability=predictable\n\n\n\n5.1.1 Questions\n\n\nWhich contrast coding is needed for such a comparison?\n\n\nTreatment contrasts, because we’re comparing everything to on baseline condition.\n\ndat1$distance &lt;- as.factor(dat1$distance)\ndat1$predability &lt;- as.factor(dat1$predability)\n\n\nlevels(dat1$distance)\n\n[1] \"long\"  \"short\"\n\nlevels(dat1$predability)\n\n[1] \"predictable\"   \"unpredictable\"\n\n\nEach have 2 levels (2x2 design).\nDesired comparisons:\n\nshort-unpredictable vs. short-predictable\nshort-unpredictable vs. long-predictable\nshort-unpredictable vs. long-unpredictable\nwe do not care about comparing short and unpredictable\nso we want treatment contrasts, with short-predictable as our baseline\n\n\n\nFirst, define the relevant contrast coding. Hint: You can do it by creating a condition column labeled a,b,c,d and then use a built-in contrast coding function.\n\n\nCreate variable ‘cond’\n\ndat1 &lt;- dat1 |&gt; \n  mutate(cond = paste(distance, predability, sep = \"-\"),\n         cond = fct_relevel(cond, \"short-unpredictable\", \"short-predictable\"))\n\nSet treatment contrasts\n\ndat1$cond &lt;- as.factor(dat1$cond)\ncontrasts(dat1$cond) &lt;- contr.treatment(4)\n\nPrint contrast matrix\n\ncontrasts(dat1$cond)\n\n                    2 3 4\nlong-predictable    0 0 0\nlong-unpredictable  1 0 0\nshort-predictable   0 1 0\nshort-unpredictable 0 0 1\n\n\nSo cond1 will be a comparisons between short-unpred and long-pred, etc.\nLet’s also look at the means per condition.\n\ndat1 |&gt; \n  Rmisc::summarySEwithin(\n    measurevar = \"rt\", withinvars = c(\"distance\", \"predability\")\n  ) |&gt; \n  knitr::kable()\n\n\n\n\ndistance\npredability\nN\nrt\nsd\nse\nci\n\n\n\n\nlong\npredictable\n378\n577.6217\n441.0407\n22.68469\n44.60436\n\n\nlong\nunpredictable\n378\n645.5847\n468.6011\n24.10224\n47.39166\n\n\nshort\npredictable\n378\n535.7302\n321.3159\n16.52671\n32.49608\n\n\nshort\nunpredictable\n378\n575.8413\n462.0511\n23.76534\n46.72924\n\n\n\n\n\n\n\nThen, use the hypr library function to confirm that your contrast coding actually does the comparison you need.\n\n\nWe’ll need to define our 3 comparisons:\n\nlibrary(hypr)\n\n\nlevels(dat1$cond)\n\n[1] \"long-predictable\"    \"long-unpredictable\"  \"short-predictable\"  \n[4] \"short-unpredictable\"\n\n\n\ncond_treat &lt;-\n  hypr(\n   b0 = `short-unpredictable` ~ 0, # include intercept\n   b1 = `long-predictable` ~ `short-unpredictable`,\n   b2 = `long-unpredictable` ~ `short-unpredictable`,\n   b3 = `short-predictable` ~ `short-unpredictable`,\n   levels = c(\"short-unpredictable\", \"short-predictable\", \"long-predictable\", \"long-unpredictable\")\n )\n\ncond_treat\n\nhypr object containing 4 null hypotheses:\nH0.b0: 0 = short-unpredictable                       (Intercept)\nH0.b1: 0 = long-predictable - short-unpredictable\nH0.b2: 0 = long-unpredictable - short-unpredictable\nH0.b3: 0 = short-predictable - short-unpredictable\n\nCall:\nhypr(b0 = ~`short-unpredictable`, b1 = ~`long-predictable` - \n    `short-unpredictable`, b2 = ~`long-unpredictable` - `short-unpredictable`, \n    b3 = ~`short-predictable` - `short-unpredictable`, levels = c(\"short-unpredictable\", \n    \"short-predictable\", \"long-predictable\", \"long-unpredictable\"\n    ))\n\nHypothesis matrix (transposed):\n                    b0 b1 b2 b3\nshort-unpredictable  1 -1 -1 -1\nshort-predictable    0  0  0  1\nlong-predictable     0  1  0  0\nlong-unpredictable   0  0  1  0\n\nContrast matrix:\n                    b0 b1 b2 b3\nshort-unpredictable 1  0  0  0 \nshort-predictable   1  0  0  1 \nlong-predictable    1  1  0  0 \nlong-unpredictable  1  0  1  0 \n\n\nCheck out hypothesis matrix\n\ncontr.hypothesis(cond_treat)\n\n                    b1 b2 b3\nshort-unpredictable  0  0  0\nshort-predictable    0  0  1\nlong-predictable     1  0  0\nlong-unpredictable   0  1  0\nattr(,\"class\")\n[1] \"hypr_cmat\" \"matrix\"    \"array\"    \n\n\nSet contrasts.\n\ncontrasts(dat1$cond) &lt;- contr.hypothesis(cond_treat)\n\nPrint contrasts\n\ncontrasts(dat1$cond)\n\n                    b1 b2 b3\nshort-unpredictable 0  0  0 \nshort-predictable   0  0  1 \nlong-predictable    1  0  0 \nlong-unpredictable  0  1  0 \n\n\n\n\nFit a simple linear model with the above contrast coding and display the slopes, which constitute the relevant comparisons.\n\n\n\nfit_dat1 &lt;- brm(rt ~ 1 + cond,\n  data = dat1,\n  family = gaussian(),\n  # prior = c(\n  #   prior(normal(550, 25), class = Intercept),\n  #   prior(normal(25, 2), class = sigma),\n  #   prior(normal(25, 1), class = b)\n  # ),\n  file = here::here(\"models/exercises/ch8/fit_ch_8_ex1\")\n)\n\n\nfixef(fit_dat1)\n\n            Estimate Est.Error      Q2.5     Q97.5\nIntercept 575.475897  19.52131 537.22261 614.16236\ncondb1      1.926428  27.28125 -51.72818  56.24605\ncondb2     69.867350  27.19697  15.34477 124.10026\ncondb3    -39.888746  26.46207 -91.86960  14.17325\n\n\nCalculate the estimates per condition:\n\n# intercept\nshort_unpred &lt;- fixef(fit_dat1)[1,\"Estimate\"]\nlong_pred &lt;- short_unpred + fixef(fit_dat1)[2,\"Estimate\"]\nlong_unpred &lt;- short_unpred + fixef(fit_dat1)[3,\"Estimate\"]\nshort_pred &lt;- short_unpred + fixef(fit_dat1)[4,\"Estimate\"]\n\n\nshort_unpred\n\n[1] 575.4759\n\nlong_pred\n\n[1] 577.4023\n\nlong_unpred\n\n[1] 645.3432\n\nshort_pred\n\n[1] 535.5872\n\n\n\ncontrasts(dat1$cond)\n\n                    b1 b2 b3\nshort-unpredictable 0  0  0 \nshort-predictable   0  0  1 \nlong-predictable    1  0  0 \nlong-unpredictable  0  1  0 \n\n\n\n\nNow, compute each of the four conditions’ means and check that the slopes from the linear model correspond to the relevant differences between means that you obtained from the data.\n\n\n\ndat1 |&gt; \n  Rmisc::summarySEwithin(\n    measurevar = \"rt\", withinvars = c(\"distance\", \"predability\")\n  ) |&gt; \n  knitr::kable()\n\n\n\n\ndistance\npredability\nN\nrt\nsd\nse\nci\n\n\n\n\nlong\npredictable\n378\n577.6217\n441.0407\n22.68469\n44.60436\n\n\nlong\nunpredictable\n378\n645.5847\n468.6011\n24.10224\n47.39166\n\n\nshort\npredictable\n378\n535.7302\n321.3159\n16.52671\n32.49608\n\n\nshort\nunpredictable\n378\n575.8413\n462.0511\n23.76534\n46.72924\n\n\n\n\n\nOr with the tidyverse:\n\ndat1 |&gt; \n  dplyr::summarise(mean = mean(rt),\n            .by = cond)\n\n                 cond     mean\n1   short-predictable 535.7302\n2  long-unpredictable 645.5847\n3    long-predictable 577.6217\n4 short-unpredictable 575.8413\n\n\nYup they correspond.",
+    "crumbs": [
+      "Book exercises",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Ch. 8 Exercises</span>"
+    ]
+  },
+  {
+    "objectID": "book_exercises/ch8_exercises.html#exercise-8.2-helmert-coding-for-a-four-condition-design.",
+    "href": "book_exercises/ch8_exercises.html#exercise-8.2-helmert-coding-for-a-four-condition-design.",
+    "title": "5  Ch. 8 Exercises",
+    "section": "5.2 Exercise 8.2 Helmert coding for a four-condition design.",
+    "text": "5.2 Exercise 8.2 Helmert coding for a four-condition design.\n\nLoad the following data:\n\n\nlibrary(bcogsci)\ndata(\"df_polarity\")\nhead(df_polarity)\n\n  subject item condition times   value\n1       1    6         f   SFD 327.845\n2       1   24         f   SFD 205.948\n3       1   35         e   SFD 315.225\n4       1   17         e   SFD 264.773\n5       1   34         d   SFD 252.193\n6       1    7         a   SFD 155.511\n\n\n\nThe data come from an eyetracking study in German reported in Vasishth et al. (2008). The experiment is a reading study involving six conditions. The sentences are in English, but the original design was involved German sentences. In German, the word durchaus (certainly) is a positive polarity item: in the constructions used in this experiment, durchaus cannot have a c-commanding element that is a negative polarity item licensor. Here are the conditions:\n\nNegative polarity items\n\n\nGrammatical: No man who had a beard was ever thrifty.\nUngrammatical (Intrusive NPI licensor): A man who had no beard was ever thrifty.\nUngrammatical: A man who had a beard was ever thrifty.\n\n\nPositive polarity items\n\n\nUngrammatical: No man who had a beard was certainly thrifty.\nGrammatical (Intrusive NPI licensor): A man who had no beard was certainly thrifty.\nGrammatical: A man who had a beard was certainly thrifty.\n\nWe will focus only on re-reading time in this data set. Subset the data so that we only have re-reading times in the data frame:\n\n\ndat2 &lt;- subset(df_polarity, times == \"RRT\")\nhead(dat2)\n\n     subject item condition times    value\n6365       1   20         b   RRT  239.571\n6366       1    3         c   RRT 1866.169\n6367       1   13         a   RRT  529.576\n6368       1   19         a   RRT  269.002\n6369       1   27         c   RRT  844.770\n6370       1   26         b   RRT  634.654\n\n\nThe comparisons we are interested in are: &gt; - RQ1: What is the difference in reading time between negative polarity items and positive polarity items? - RQ2: Within negative polarity items, what is the difference between grammatical and ungrammatical conditions? - RQ3: Within negative polarity items, what is the difference between the two ungrammatical conditions? - RQ4: Within positive polarity items, what is the difference between grammatical and ungrammatical conditions? - RQ5: Within positive polarity items, what is the difference between the two grammatical conditions? &gt; Use the hypr package to specify the comparisons specified above, and then extract the contrast matrix.\nMy outline of our effects/comparisons of interest:\n\na main effect of polarity (positive vs negative)\nnested effect of grammaticality within either level of polarity\neffect of intrusivity within either polarity level\n\n\nlevels(dat2$condition)\n\n[1] \"a\" \"b\" \"c\" \"d\" \"e\" \"f\"\n\n\nTo help me: create predictor factors.\n\ndat2 &lt;-\n  dat2 |&gt; \n  mutate(polarity = ifelse(condition %in% c(\"a\", \"b\", \"c\"), \"negative\", \"positive\"),\n         gramm = ifelse(condition %in% c(\"a\", \"e\", \"f\"), \"gramm\", \"ungramm\"),\n         intru = ifelse(condition %in% c(\"b\", \"e\"), \"intrusive\", \"unintrusive\"))\n\n\ndat2 |&gt; \n  distinct(condition, .keep_all = T) |&gt; \n  arrange(condition)\n\n  subject item condition times    value polarity   gramm       intru\n1       1   13         a   RRT  529.576 negative   gramm unintrusive\n2       1   20         b   RRT  239.571 negative ungramm   intrusive\n3       1    3         c   RRT 1866.169 negative ungramm unintrusive\n4       1    4         d   RRT  332.036 positive ungramm unintrusive\n5       1   11         e   RRT  806.971 positive   gramm   intrusive\n6       2   29         f   RRT  319.430 positive   gramm unintrusive\n\n\n\ncond_dat2 &lt;-\n  hypr(\n   rq1 =  (a + b + c) /3~ (d + e + f) /3,\n   rq2 = a ~ (b + c) / 2,\n   rq3 = b ~ c,\n   rq4 = d ~ (e+f)/2,\n   rq5 = e ~ f,\n   levels = c(\"a\", \"b\", \"c\", \"d\", \"e\", \"f\")\n )\n\ncond_dat2\n\nhypr object containing 5 null hypotheses:\nH0.rq1: 0 = (a + b + c - d - e - f)/3\nH0.rq2: 0 = a - 1/2*b - 1/2*c\nH0.rq3: 0 = b - c\nH0.rq4: 0 = d - 1/2*e - 1/2*f\nH0.rq5: 0 = e - f\n\nCall:\nhypr(rq1 = ~1/3 * a + 1/3 * b + 1/3 * c - 1/3 * d - 1/3 * e - \n    1/3 * f, rq2 = ~a - 1/2 * b - 1/2 * c, rq3 = ~b - c, rq4 = ~d - \n    1/2 * e - 1/2 * f, rq5 = ~e - f, levels = c(\"a\", \"b\", \"c\", \n\"d\", \"e\", \"f\"))\n\nHypothesis matrix (transposed):\n  rq1  rq2  rq3  rq4  rq5 \na  1/3    1    0    0    0\nb  1/3 -1/2    1    0    0\nc  1/3 -1/2   -1    0    0\nd -1/3    0    0    1    0\ne -1/3    0    0 -1/2    1\nf -1/3    0    0 -1/2   -1\n\nContrast matrix:\n  rq1  rq2  rq3  rq4  rq5 \na  1/2  2/3    0    0    0\nb  1/2 -1/3  1/2    0    0\nc  1/2 -1/3 -1/2    0    0\nd -1/2    0    0  2/3    0\ne -1/2    0    0 -1/3  1/2\nf -1/2    0    0 -1/3 -1/2\n\n\n\nFinally, specify the contrasts to the condition column in the data frame.\n\n\ncontrasts(dat2$condition) &lt;- contr.hypothesis(cond_dat2)\n\n\ncontrasts(dat2$condition)\n\n  rq1  rq2  rq3  rq4  rq5 \na  1/2  2/3    0    0    0\nb  1/2 -1/3  1/2    0    0\nc  1/2 -1/3 -1/2    0    0\nd -1/2    0    0  2/3    0\ne -1/2    0    0 -1/3  1/2\nf -1/2    0    0 -1/3 -1/2\n\n\n\nFit a linear model using this contrast specification, and then check that the estimates from the model match the mean differences between the conditions being compared.\n\n\nfit_dat2 &lt;- brm(value ~ 1 + condition,\n  data = dat2,\n  family = gaussian(),\n  # prior = c(\n  #   prior(normal(550, 25), class = Intercept),\n  #   prior(normal(25, 2), class = sigma),\n  #   prior(normal(25, 1), class = b)\n  # ),\n  file = here::here(\"models/exercises/ch8/fit_ch_8_ex2\")\n)\n\n\nfixef(fit_dat2)\n\n               Estimate Est.Error       Q2.5     Q97.5\nIntercept     510.79417  17.39399  477.20865 544.30347\nconditionrq1  153.45661  35.39835   85.69990 223.12523\nconditionrq2 -152.05606  52.45486 -251.79242 -52.02678\nconditionrq3  -25.59221  56.49876 -136.06084  84.89980\nconditionrq4  141.53725  55.53767   34.55437 249.76384\nconditionrq5   34.69203  62.82869  -91.78247 158.63615\n\n\nCalculate the estimates per condition:\n\ncontrasts(dat2$condition)\n\n  rq1  rq2  rq3  rq4  rq5 \na  1/2  2/3    0    0    0\nb  1/2 -1/3  1/2    0    0\nc  1/2 -1/3 -1/2    0    0\nd -1/2    0    0  2/3    0\ne -1/2    0    0 -1/3  1/2\nf -1/2    0    0 -1/3 -1/2\n\n\n\n# intercept\nintercept &lt;- fixef(fit_dat2)[\"Intercept\",\"Estimate\"]\n\n\n5.2.1 RQ1: dif between positive and negative\nRaw diff’s.\n\ndat2 |&gt; \n  summarise(mean = mean(value),\n            .by = polarity) |&gt; \n  pivot_wider(names_from = polarity, values_from = mean) |&gt; \n  mutate(difference = negative - positive)\n\n# A tibble: 1 × 3\n  negative positive difference\n     &lt;dbl&gt;    &lt;dbl&gt;      &lt;dbl&gt;\n1     592.     440.       152.\n\n\n\npositive &lt;- intercept + fixef(fit_dat2)[\"conditionrq1\",\"Estimate\"]*-0.5\nnegative &lt;- intercept + fixef(fit_dat2)[\"conditionrq1\",\"Estimate\"]*0.5\nrq1 &lt;- negative - positive\n\nEstimated diff.\n\nrq1\n\n[1] 153.4566\n\n\nSlope value.\n\nfixef(fit_dat2)[\"conditionrq1\",\"Estimate\"]\n\n[1] 153.4566\n\n\n\n\n5.2.2 RQ2: Grammaticality diff’s within negative (cond a vs b+c)\nRaw diff’s.\n\ndat2 |&gt; \n  filter(polarity == \"negative\") |&gt; \n  summarise(mean = mean(value),\n            .by = gramm) |&gt; \n  pivot_wider(names_from = gramm, values_from = mean) |&gt; \n  mutate(difference = gramm - ungramm)\n\n# A tibble: 1 × 3\n  ungramm gramm difference\n    &lt;dbl&gt; &lt;dbl&gt;      &lt;dbl&gt;\n1    639.  487.      -152.\n\n\n\nest_gramm &lt;- intercept + fixef(fit_dat2)[\"conditionrq2\",\"Estimate\"]*0.5\nest_ungramm &lt;- intercept + fixef(fit_dat2)[\"conditionrq2\",\"Estimate\"]*-0.5\nrq2 &lt;- est_gramm - est_ungramm\n\nEstimated diff.\n\nrq2\n\n[1] -152.0561\n\n\nSlope value.\n\nfixef(fit_dat2)[\"conditionrq2\",\"Estimate\"]\n\n[1] -152.0561\n\n\n\n\n5.2.3 RQ3: Ungramm vs. ungramm within negative (cond b vs. c)\nRaw diff’s.\n\ndat2 |&gt; \n  summarise(mean = mean(value),\n            .by = condition) |&gt; \n  filter(condition %in% c(\"b\", \"c\")) |&gt; \n  pivot_wider(names_from = condition, values_from = mean) |&gt; \n  mutate(difference = b - c)\n\n# A tibble: 1 × 3\n      b     c difference\n  &lt;dbl&gt; &lt;dbl&gt;      &lt;dbl&gt;\n1  626.  652.      -25.4\n\n\n\nest_b &lt;- intercept + fixef(fit_dat2)[\"conditionrq3\",\"Estimate\"]*0.5\nest_c &lt;- intercept + fixef(fit_dat2)[\"conditionrq3\",\"Estimate\"]*-0.5\nrq3 &lt;- est_b - est_c\n\nEstimated diff.\n\nrq3\n\n[1] -25.59221\n\n\nSlope value.\n\nfixef(fit_dat2)[\"conditionrq3\",\"Estimate\"]\n\n[1] -25.59221\n\n\n\n\n5.2.4 RQ4: Grammaticality diff’s within positive (cond d vs. e + f)\nRaw diff’s.\n\ndat2 |&gt; \n  filter(polarity == \"positive\") |&gt; \n  summarise(mean = mean(value),\n            .by = gramm) |&gt; \n  pivot_wider(names_from = gramm, values_from = mean) |&gt; \n  mutate(difference = gramm - ungramm)\n\n# A tibble: 1 × 3\n  ungramm gramm difference\n    &lt;dbl&gt; &lt;dbl&gt;      &lt;dbl&gt;\n1    529.  389.      -140.\n\n\n\nest_gramm &lt;- intercept + fixef(fit_dat2)[\"conditionrq4\",\"Estimate\"]*0.5\nest_ungramm &lt;- intercept + fixef(fit_dat2)[\"conditionrq4\",\"Estimate\"]*-0.5\nrq4 &lt;- est_gramm - est_ungramm\n\nEstimated diff.\n\nrq4\n\n[1] 141.5373\n\n\nSlope value.\n\nfixef(fit_dat2)[\"conditionrq4\",\"Estimate\"]\n\n[1] 141.5373\n\n\n\n\n5.2.5 RQ5: Gramm vs. gramm within positive (cond e vs. f)\nRaw diff’s.\n\ndat2 |&gt; \n  summarise(mean = mean(value),\n            .by = condition) |&gt; \n  filter(condition %in% c(\"e\", \"f\")) |&gt; \n  pivot_wider(names_from = condition, values_from = mean) |&gt; \n  mutate(difference = e - f)\n\n# A tibble: 1 × 3\n      e     f difference\n  &lt;dbl&gt; &lt;dbl&gt;      &lt;dbl&gt;\n1  405.  371.       34.0\n\n\n\nest_e &lt;- intercept + fixef(fit_dat2)[\"conditionrq5\",\"Estimate\"]*0.5\nest_f &lt;- intercept + fixef(fit_dat2)[\"conditionrq5\",\"Estimate\"]*-0.5\nrq5 &lt;- est_e - est_f\n\nEstimated diff.\n\nrq5\n\n[1] 34.69203\n\n\nSlope value.\n\nfixef(fit_dat2)[\"conditionrq5\",\"Estimate\"]\n\n[1] 34.69203",
+    "crumbs": [
+      "Book exercises",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Ch. 8 Exercises</span>"
+    ]
+  },
+  {
+    "objectID": "book_exercises/ch8_exercises.html#exercise-8.3-number-of-possible-comparisons-in-a-single-model.",
+    "href": "book_exercises/ch8_exercises.html#exercise-8.3-number-of-possible-comparisons-in-a-single-model.",
+    "title": "5  Ch. 8 Exercises",
+    "section": "5.3 Exercise 8.3 Number of possible comparisons in a single model.",
+    "text": "5.3 Exercise 8.3 Number of possible comparisons in a single model.\n\nHow many comparisons can one make in a single model when there is a single factor with four levels? Why can we not code four comparisons in a single model?\n\n1 v (2,3,4) (1,2) v. (3,4) (1,2,3) v. 4 1 v 2 1 v 3 1 v 4\n3 v. (3)\n\nHow many comparisons can one code in a model where there are two factors, one with three levels and one with two levels?\n\nSix conditions, two main effects.\n\nHow about a model for a 2 x 2 design?\n\nFour conditions, two main effects. - compare main effects (x1) - compare nested effects for pred1/pred2 (x2) + and pred2/pred1 (x2)",
+    "crumbs": [
+      "Book exercises",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Ch. 8 Exercises</span>"
+    ]
+  }
+]
