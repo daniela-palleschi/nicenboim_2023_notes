@@ -1,0 +1,285 @@
+---
+title: "Introduction"
+subtitle: "Chapter 1 Notes"
+author: "Daniela Palleschi"
+bibliography: references.bib
+---
+
+This document contains my chapter notes from [Ch. 1 (Introduction)](https://vasishth.github.io/bayescogsci/book/ch-introBDA.html) from @nicenboim_introduction_nodate.
+
+```{r, eval = T, echo = F, message = F}
+# Create references.json file based on the citations in this script
+# rbbt::bbt_update_bib(here::here("book_notes","ch1.qmd"))
+```
+
+# Set up{-}
+
+```{r, results = "hide", warning=F,message=F,error=F}
+#| code-fold: true
+# set global knit options
+knitr::opts_chunk$set(echo = T, # print chunks?
+                      eval = T, # run chunks?
+                      error = F, # print errors?
+                      warning = F, # print warnings?
+                      message = F, # print messages?
+                      cache = T # cache?; be careful with this!
+                      )
+
+# suppress scientific notation
+options(scipen=999)
+
+# load packages
+## create list of package names
+packages <- c( #"SIN", # this package was removed from the CRAN repository
+               "MASS", "dplyr", "tidyr", "purrr", "extraDistr", "ggplot2", "loo", "bridgesampling", "brms", "bayesplot", "tictoc", "hypr", "bcogsci", "papaja", "grid", "kableExtra", "gridExtra", "lme4", "cowplot", "pdftools", "cmdstanr", "rootSolve", "rstan"
+  )
+
+# NB: if you haven't already installed bcogsci through devtools, it won't be loaded
+## Now load or install & load all
+package.check <- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      install.packages(x, dependencies = TRUE)
+      library(x, character.only = TRUE)
+    }
+  }
+)
+
+# this is also required, taken from the textbook
+
+## Save compiled models:
+rstan_options(auto_write = FALSE)
+## Parallelize the chains using all the cores:
+options(mc.cores = parallel::detectCores())
+# To solve some conflicts between packages
+select <- dplyr::select
+extract <- rstan::extract
+```
+
+# Ch. 1 - Intro
+
+- given some data, how to use Bayes’ theorem to ***quantify uncertainty about our belief*** regarding a scientific question of interest
+- topics to be understood:
+  - the basic concepts behind probability
+  - the concept of random variables
+  - probability distributions
+  - the concept of likelihood
+
+## Probability
+
+Frequency-based versus uncertain-belief perspective of probability:
+
+1. repeatable events, like rolling a die and getting a 6, are *frequentist* because **probability** is related to the *frequency* at which we'd observe an outcome given repeated observations
+2. one-of-a-kind events, like earthquakes, don't work with this idea of probability
+  - the probability of an earthquake expresses our *uncertainty* about an event happening
+  - we also be *uncertain* about how probable an event is: being 90% sure something is 50% likely to happen
+  - this is what we're interested in: how uncertain we are of an estimate
+  
+In Bayesian analysis, we want to express our uncertainty about the probability of observing an outcome (*prior distribution*).
+
+### Conditional probability and Bayes' rule
+
+- A = "the streets are wet"
+- B = "it was raining"
+- P(A|B) = the probability of A given B
+- P(A,B) = P(A|B)P(B) (the probability of A and B happening)
+
+### Law of total probability
+
+- dunno
+
+## Discrete random variables
+
+Generating random sequences of simulated data with a binomial distribution. Imagine a cloze task, where we consider a particular word a success (1) and any other word a failure (0). If we run the experiment 20 times with a sample size of 10, the cloze probabilities for these 20 experiments would be:
+
+```{r, results="asis"}
+rbinom(10, n = 20, prob = .5)
+```
+
+For discrete random variables such as the binomial, the probability distribution *p(y|$\theta$)* is called a probability mass function (PMF) . The PMF defines the probability of each possible outcome. With *n* = 10 trials, there are 11 possible outcomes (0, 1, 2,...10 succeses). Which outcome is most probable depends on the parameter $\theta$ that represents the probability of success. Above, we set $\theta$ to `0.5`.
+
+### The mean and variance of the binomial distribution
+
+In real exerimental situations we never know the true value of $\theta$ (probability of an outcome), but it can be derived from the data: *$\theta$ hat = k/n*, where *k* = number of observed successess, *n* = number of trials, and *$\theta$ hat* = observed proportion of successes. *$\theta$ hat* = ***maximum likelihood estimate*** of the true but unknown parameter *$\theta$*. Basically, the **mean** of the binomial distribution. The **variance** can also be estimated by computing *(n($\theta$))(1 - $\theta$)*. These estimates can be be used for statistical inference.
+
+### Compute probability of a particular outcome (discrete): dibinom
+
+`dbinom` calculates probability of *k* successes out of *n* given a particular *$\theta$*.
+
+```{r}
+dbinom(5, size = 10, prob = .5)
+dbinom(5, size = 10, prob = .1)
+dbinom(5, size = 10, prob = .9)
+```
+
+With continuous data, the probability of obtaining an exact value will always be zero. We'll come ot this later.
+
+### Compute cumulative probability: pbinom
+
+The cumulative distribution function (CDF): essentially the sum of all probabilities of the values of *k* you are interested in. E.g., the probability of observing 2 successes or fewer (0, 1, or 2) is:
+
+```{r}
+# sum of probabilities for exact k's
+dbinom(0, size = 10, prob = .5) +
+  dbinom(1, size = 10, prob = .5) +
+  dbinom(2, size = 10, prob = .5)
+
+# or
+sum(dbinom(0:2, size = 10, prob = .5))
+
+# or use pbinom()
+pbinom(2, size = 10, prob = 0.5, lower.tail = TRUE)
+# conversely, what is the $\theta$ of observing THREE successes or more?
+pbinom(2, size = 10, prob = 0.5, lower.tail = F)
+# or
+sum(dbinom(3:10, size = 10, prob = .5))
+
+# the probability of observing 10 or fewer successes (out of 10 trials)
+pbinom(10, size = 10, prob = 0.5, lower.tail = TRUE)
+```
+
+### Compute the inverse of the CDF (quantile function): qbinom
+
+The quantile function (the inverse CDF) obtains the value of *k* (the quantile) given the probability of obtaining *k* or less than *k* successes given some specific probability value *p*:
+
+```{r}
+# reverse of dbinom(2,10,.5) would be:
+qbinom(0.0546875, size=10, prob=.5)
+```
+
+#### Generage simulated data from binomial distribtion: rbinom
+
+```{r}
+# given 1 iteration of 10 trials where p = .5, produce a random value of k
+rbinom(1, 10, .5)
+```
+
+## Continuous random variables
+
+Imagine vector of reading times data with a normal distribution, defined by its *mean* and its *sd*. The ***probability density function*** (PDF) for particular values of mean and sd (assuming a normal distribution) can be calculated using `dnorm`. The CDF can be found using `pnorm`, and the inverse CDF using `qnorm`. These are 3 different ways of looking at the infrmation.
+
+```{r}
+# p of observing a mean of 250ms when the true mean is 500 & sd = 100 (PDF)
+dnorm(400,mean = 500, sd = 100)
+
+# p of observing 400ms *or lower* when the true mean is 500 & sd = 100 (CDF)
+pnorm(400,mean = 500, sd = 100)
+
+# k with a CDF of 0.1586553 when the true mean is 500 & sd = 100 (inverse CDF)
+qnorm(0.1586553, mean = 500, sd = 100)
+```
+
+Question: what is the probability of observing values between 200 and 700 from a normal distribution where mean = 500 and sd = 100?
+
+```{r}
+pnorm(700,500,100) - pnorm(200,500,100)
+```
+
+With continuous data, it is only meaningful to ask about probabilities between two point values (e.g., probability that Y lies between a and b).
+
+What is the quantile *q* such that the probability of observing that value or something less (or more) than it is 0.975 (given the normal(500,100) distribution)?
+
+```{r}
+qnorm(0.975, m=500, sd=100)
+```
+
+Next task: generate simulated data. generate 10 data points using the `rnorm` function and use this simulated data to compute the mean and stanrdard devaition.
+
+```{r}
+x <- rnorm(10,500,100)
+mean(x)
+sd(x)
+
+# can also computer lower and upper bounds of 95% CIs
+quantile(x, probs = c(.025, .975))
+```
+
+### An important distinction: probability vs. densitiy in continuous random variables
+
+The probability density function (PDF):
+```{r}
+# density with default m = 0 and sd = 1
+dnorm(1)
+```
+
+This is not the probability of observing 1 in this distribution, as the probability of a single value in a continous distribtion will always be 0. This is becaue probability in a continuous distritubion is the ***area under the curve***, and at a single point there is no area under the curve (i.e., p = 0). The `pnorm` function allows us to find the cumulative distribution function (CDF) for the normal distribution.
+
+For example, the probability of obseving a value etween +/-2 in a normal distribution with mean 0 and sd 1:
+```{r}
+pnorm(2, m = 0, sd = 1) - pnorm(-2, m = 0, sd = 1)
+```
+
+For ***discrete*** random variables, the situation is different. These have a probability **mass** function (PMF), the binomial distribution that we saw before. Here, the PMF maps the possible *y* values to the probabilities of those exact values occurring.
+
+```{r}
+dbinom(2,size=10,prob=.5)
+```
+
+### Truncating a normal distribution
+
+Refers to positive values only (truncating at 0).
+
+## Bivariate and multivariate distributions
+
+Consider a case where two discrete responses were recorded: a binary yes/no response, and a Likert acceptability rating (1-7).
+
+The ***joint probability mass function*** is the joint PMF of two random variables.
+
+Let's play around with some such data:
+```{r}
+# run if package is not loaded
+# library(bcogsci)
+data("df_discreteagrmt")
+```
+
+#### Marginal distributions
+
+The marginal distribution of each pair of values (let's say *x* = the binary response, *y* = the Likert response) is computed by summing up 
+
+```{r, eval = F}
+rowSums(probs)
+```
+
+***object `probs` is not defined in the book***
+
+### Generate simulated bivariate (multivariate) data
+
+Suppose we want to generate 100 pairs of correlated data, with correlation rho = 0.6. The two random variables have mean 0, and standard deviations 5 and 10 respectively.
+
+```{r}
+## define a variance-covariance matrix:
+Sigma <- matrix(c(5^2, 5 * 10 * .6, 5 * 10 * .6, 10^2),
+  byrow = FALSE, ncol = 2
+)
+## generate data:
+u <- mvrnorm(
+  n = 100,
+  mu = c(0, 0),
+  Sigma = Sigma
+)
+head(u, n = 3)
+```
+
+```{r}
+# plot the data
+ggplot(tibble(u_1 = u[, 1], u_2 = u[, 2]), aes(u_1, u_2)) +
+  geom_point()
+```
+
+## An important concept: the marginal likelihood (integrating out a parameter)
+
+# Session Info
+
+Compiled with `r R.version$version` (`r R.version$nickname`) in RStudio version 2023.12.1.402 (Ocean Storm).
+
+```{r}
+#| eval: false
+#| echo: false
+RStudio.Version()$version; RStudio.Version()$release_name
+```
+
+```{r}
+sessionInfo()
+```
+

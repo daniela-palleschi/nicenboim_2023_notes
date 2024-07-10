@@ -1,17 +1,22 @@
 ---
-title: "Ch. 4"
+title: "Bayesian regression models"
+subtitle: "Chapter 4 notes"
+date: "10/11/2023"
 ---
+
+This document contains my chapter notes from [Ch. 4 (Bayesian regression models)](https://vasishth.github.io/bayescogsci/book/ch-reg.html) from @nicenboim_introduction_nodate.
 
 # Set up {-}
 
 ```{r, results = "hide", warning=F,message=F,error=F}
+#| code-fold: true
 # set global knit options
 knitr::opts_chunk$set(echo = T, # print chunks?
                       eval = T, # run chunks?
                       error = F, # print errors?
                       warning = F, # print warnings?
                       message = F, # print messages?
-                      cache = T # cache?; be careful with this!
+                      cache = F # cache?; be careful with this!
                       )
 
 # suppress scientific notation
@@ -182,10 +187,14 @@ round(qnorm(c(.025,.975),
 
 ```{r}
 data("df_pupil")
-(df_pupil <- df_pupil %>%
+df_pupil <- df_pupil %>%
     mutate(c_load = load - mean(load)) # centre
-  )
 ```
+
+```{r}
+head(df_pupil)
+```
+
 
 - fit the brms model:
 
@@ -198,7 +207,8 @@ fit_pupil <- brm(p_size ~ 1 + c_load,
                    prior(normal(0,1000), class = sigma),
                    prior(normal(0,100), 
                          class = b, coef = c_load) # predictor prior
-                 )
+                 ),
+  file = here::here("models", "notes", "ch4", "fit_pupil")
                  )
 ```
 
@@ -380,7 +390,8 @@ fit_prior_press_trial <- brm(t ~ 1 + c_trial,
     prior(normal(0, 1), class = b, coef = c_trial)
   ),
   sample_prior = "only", # PRIOR PRED DISTR
-  control = list(adapt_delta = .9)
+  control = list(adapt_delta = .9),
+  file = here::here("models", "notes", "ch4", "fit_prior_press_trial")
 )
 ```
 
@@ -426,7 +437,8 @@ fit_prior_press_trial <- brm(t ~ 1 + c_trial,
     prior(normal(0, .01), class = b, coef = c_trial) # change to 0,.01
   ),
   sample_prior = "only", # PRIOR PRED DISTR
-  control = list(adapt_delta = .9)
+  control = list(adapt_delta = .9),
+  file = here::here("models", "notes", "ch4", "fit_prior_press_trial_2")
 )
 
 # calculate median
@@ -455,6 +467,13 @@ pp_check(fit_prior_press_trial,
   + we need to specify the family is `lognormal()`
   
 ```{r}
+df_spacebar <-
+  df_spacebar |> 
+  rename(rt = t)
+```
+
+  
+```{r}
 fit_press_trial <- brm(rt ~ 1 + c_trial,
   data = df_spacebar,
   family = lognormal(),
@@ -462,7 +481,8 @@ fit_press_trial <- brm(rt ~ 1 + c_trial,
     prior(normal(6, 1.5), class = Intercept),
     prior(normal(0, 1), class = sigma),
     prior(normal(0, .01), class = b, coef = c_trial)
-  )
+  ),
+  file = here::here("models", "notes", "ch4", "fit_press_trial_2")
 )
 ```
 
@@ -833,7 +853,8 @@ fit_recall <- brm(
   prior = c(
     prior(normal(0, 1.5), class = Intercept),
     prior(normal(0, .1), class = b, coef = c_set_size)
-  )
+  ),
+  file = here::here("models", "notes", "ch4", "fit_recall")
 )
 ```
 
@@ -1017,7 +1038,7 @@ pp_check(fit_recall,
 
 # Session Info
 
-Compiled with `r R.version$version` (`r R.version$nickname`) in RStudio version 2023.3.0.386 (Cherry Blossom).
+Compiled with `r R.version$version` (`r R.version$nickname`) in RStudio version 2023.12.1.402 (Ocean Storm).
 
 ```{r}
 #| eval: false
@@ -1026,15 +1047,5 @@ RStudio.Version()$version; RStudio.Version()$release_name
 ```
 
 ```{r}
-#| echo: false
-system("say -v Moira Ch. 4 has finished running")
-```
-
-```{r}
 sessionInfo()
 ```
-
-# References {.unlisted .unnumbered visibility="uncounted"}
-
-::: {#refs custom-style="Bibliography"}
-:::

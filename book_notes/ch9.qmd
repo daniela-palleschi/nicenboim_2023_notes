@@ -1,0 +1,389 @@
+---
+title: "Contrast Coding with 2 predictors"
+subtitle: "Chapter 9 notes"
+---
+
+These notes accompany [Ch. 9 (Contrast coding for designs with two predictor variables)]https://vasishth.github.io/bayescogsci/book/ch-coding2x2.html#ch-coding2x2) of the current version of [Bayesian Data Analysis for Cognitive Science](https://vasishth.github.io/bayescogsci).
+
+Ch. 8 introduced contrast coding with one predictor variable and specifying a contrast matrix for your hypotheses. We'll now look at contrast coding when we have more than one preditor, for example with 2 factors or one factor with a continuous predictor/covariate. We'll look at 2x2 designs and then look at a single-factor + covariate situation. We'll look at interactions in non-linear models (GLMMs) for logistic models or log-normal dependent variables.
+
+# Set up {-}
+
+```{r, results = "hide", warning=F,message=F,error=F}
+# set global knit options
+knitr::opts_chunk$set(echo = T, # print chunks?
+                      eval = T, # run chunks?
+                      error = F, # print errors?
+                      warning = F, # print warnings?
+                      message = F, # print messages?
+                      cache = F # cache?; be careful with this!
+                      )
+
+# suppress scientific notation
+options(scipen=999)
+
+# play a sound if error encountered
+options(error = function() {beepr::beep(9)})
+
+# load packages
+## create list of package names
+packages <- c( #"SIN", # this package was removed from the CRAN repository
+               "MASS", "dplyr", "tidyr", "purrr", "extraDistr", "ggplot2", "loo", "bridgesampling", "brms", "bayesplot", "tictoc", "hypr", "bcogsci", "papaja", "grid", "kableExtra", "gridExtra", "lme4", "cowplot", "pdftools", "cmdstanr", "rootSolve", "rstan"
+  )
+
+# NB: if you haven't already installed bcogsci through devtools, it won't be loaded
+## Now load or install & load all
+package.check <- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      install.packages(x, dependencies = TRUE)
+      library(x, character.only = TRUE)
+    }
+  }
+)
+
+# this is also required, taken from the textbook
+
+## Save compiled models:
+rstan_options(auto_write = FALSE)
+## Parallelize the chains using all the cores:
+options(mc.cores = parallel::detectCores())
+```
+
+
+```{r, results = "hide", warning=F,message=F,error=F}
+# To solve some conflicts between packages
+select <- dplyr::select
+extract <- rstan::extract
+```
+
+## Contrast coding in a factorial 2 x 2 design
+
+In the last chapter we looked at a 4-level factor which can be re-coded into two two-level factors.
+
+```{r}
+data("df_contrasts4")
+```
+
+```{r}
+head(df_contrasts4)
+```
+
+
+```{r}
+#| label: tbl-summary
+#| tbl-cap: "Summary stats per condition for simulated data"
+df_contrasts4 |> 
+  summarise(
+    N = n(),
+    means = mean(DV),
+    sd = sd(DV),
+    se = se(DV),
+    .by = c(A, B)
+  )
+```
+
+For a 2 x 2 ANOVA-type analysis (main and interaction effects) we use sum contrast. Doesn't generalise to factors with more levels, though.
+
+```{r}
+# define sum contrasts:
+contrasts(df_contrasts4$A) <- contr.sum(2)
+contrasts(df_contrasts4$B) <- contr.sum(2)
+```
+
+```{r}
+# Bayesian LM
+fit_AB.sum <- brm(DV ~ 1 + A * B,
+  data = df_contrasts4,
+  family = gaussian(),
+  prior = c(
+    prior(normal(20, 50), class = Intercept),
+    prior(normal(0, 50), class = sigma),
+    prior(normal(0, 50), class = b)
+  ),
+  file = here::here("models", "notes", "ch9", "fit_AB.sum")
+)
+```
+
+```{r}
+fixef(fit_AB.sum)
+```
+
+### Nested effects
+
+Looking for simple effects of factor A estimated for each level of the factor B, and vice versa.
+
+```{r}
+t(fractions(HcNes <- rbind(
+  B = c(F1 = 1 / 2, F2 = -1 / 2, F3 = 1 / 2, F4 = -1 / 2),
+  B1xA = c(F1 = -1, F2 = 0, F3 = 1, F4 = 0),
+  B2xA = c(F1 = 0, F2 = -1, F3 = 0, F4 = 1)
+)))
+```
+
+```{r}
+(XcNes <- ginv2(HcNes))
+```
+
+```{r}
+contrasts(df_contrasts3$F) <- XcNes
+```
+
+```{r}
+fit_Nest <- brm(DV ~ 1 + F,
+  data = df_contrasts3,
+  family = gaussian(),
+  prior = c(
+    prior(normal(20, 50), class = Intercept),
+    prior(normal(0, 50), class = sigma),
+    prior(normal(0, 50), class = b)
+  ),
+  file = here::here("models", "notes", "ch9", "fit_Nest")
+)
+```
+
+```{r}
+fixef(fit_Nest)
+```
+
+These are our custom nested contrasts.
+
+Now let's just use sum contrasts and the nested contrast syntax (this is what I usually do).
+
+```{r}
+contrasts(df_contrasts4$A) <- c(-0.5, +0.5)
+contrasts(df_contrasts4$B) <- c(+0.5, -0.5)
+```
+
+```{r}
+contrasts(df_contrasts4$A)
+contrasts(df_contrasts4$B)
+```
+
+```{r}
+fit_Nest2 <- brm(DV ~ 1 + B / A,
+  data = df_contrasts4,
+  family = gaussian(),
+  prior = c(
+    prior(normal(20, 50), class = Intercept),
+    prior(normal(0, 50), class = sigma),
+    prior(normal(0, 50), class = b)
+  ),
+  
+  file = here::here("models", "notes", "ch9", "fit_Nest2")
+)
+```
+
+```{r}
+fixef(fit_Nest2)
+```
+
+Comparable to above.
+
+And using `hypr`:
+
+```{r}
+hNest <- hypr(
+  B = (F1 + F3) / 2 ~ (F2 + F4) / 2,
+  B1xA = F3 ~ F1,
+  B2xA = F4 ~ F2
+)
+hNest
+```
+
+```{r}
+contrasts(df_contrasts3$F) <- contr.hypothesis(hNest)
+```
+
+```{r}
+fit_NestHypr <- brm(DV ~ 1 + F,
+  data = df_contrasts3,
+  family = gaussian(),
+  prior = c(
+    prior(normal(20, 50), class = Intercept),
+    prior(normal(0, 50), class = sigma),
+    prior(normal(0, 50), class = b)
+  ),
+  file = here::here("models", "notes", "ch9", "fit_NestHypr")
+)
+
+```
+
+```{r}
+fixef(fit_NestHypr)
+```
+
+Again, comparable estimates.
+
+
+
+### Interactions between contrasts
+
+Basically discusses importance of contrast coding for interactions.
+
+## One factor and one covariate
+
+Simualted dataset with reaction times for two groups (F1 and F2). We assume groups were randomly assigned.
+
+```{r}
+data("df_contrasts5")
+```
+
+```{r}
+head(df_contrasts5)
+```
+
+Run sum contrasts on group (F).
+
+```{r}
+contrasts(df_contrasts5$F) <- c(-0.5, +0.5)
+contrasts(df_contrasts5$F)
+```
+
+```{r}
+fit_RT_F <- brm(RT ~ 1 + F,
+  data = df_contrasts5,
+  family = gaussian(),
+  prior = c(
+    prior(normal(200, 50), class = Intercept),
+    prior(normal(0, 50), class = sigma),
+    prior(normal(0, 50), class = b)
+  ),
+  file = here::here("models", "notes", "ch9", "fit_RT_F")
+)
+```
+
+```{r}
+fixef(fit_RT_F)
+```
+
+```{r}
+#| label: fig-f
+#| code-fold: true
+#| fig-cap: "Means and error bars (showing standard errors) for a simulated data set of response times for two different groups of subjects, who have obtained a training in lexical decisions (F2) versus have obtained a control training (F1)."
+
+tab5 <- df_contrasts5 %>%
+  group_by(F) %>%
+  summarize(M = mean(RT), SE = sd(RT) / sqrt(n()))
+
+(plot_RT <- ggplot(data = tab5, aes(x = F, y = M, ymin = M - SE, ymax = M + SE)) +
+  ## geom_bar(stat = "identity") +
+   geom_point() +
+  geom_errorbar(width = 0.2) +
+  labs(y = "Response times [ms]", x = "Group (F)")) +
+  theme_bw()
+```
+
+
+
+
+
+```{r}
+df_contrasts5 |> 
+  summarise(
+    mean_iq = mean(IQ),
+    .by = F
+  )
+```
+
+But we also measured participant IQ and it just so happens group F2 had higher IQ.
+
+```{r}
+df_contrasts5 %>%
+  group_by(F) %>%
+  summarize(M.IQ = mean(IQ),
+            M.RT = mean(RT))
+```
+
+So we want to control for this by including IQ as a covariate, but we first standardize it.
+
+```{r}
+df_contrasts5$IQ.c <- df_contrasts5$IQ - mean(df_contrasts5$IQ)
+```
+
+
+```{r}
+fit_RT_F_IQ <- brm(RT ~ 1 + F + IQ.c,
+  data = df_contrasts5,
+  family = gaussian(),
+  prior = c(
+    prior(normal(200, 50), class = Intercept),
+    prior(normal(0, 50), class = sigma),
+    prior(normal(0, 50), class = b)
+  ),
+  
+  file = here::here("models", "notes", "ch9", "fit_RT_F_IQ")
+)
+```
+
+```{r}
+fixef(fit_RT_F_IQ)
+```
+
+Estimate is now much smaller and in the opposite direction (+7ish instead of -23ish), ad importantly: the 95% credible interval crosses 0. In @fig-f-iq it looks like reaction times decreases according to IQ, rather than group assignment.
+
+```{r}
+#| label: fig-f-iq
+#| code-fold: true
+#| fig-cap: "Response times as a function of individual IQ for two groups with a lexical decision training (F2) versus a control training (F1). Points indicate individual subjects, and lines with error bands indicate linear regression lines."
+(plot_RT_IQ <- ggplot(data = df_contrasts5, aes(x = IQ, y = RT, colour = F, linetype = F)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(y = "Response times [ms]")) +
+  theme_bw()
+```
+
+Now let's add an interaction term. Based on @fig-f-iq it doesn't look like the effect of IQ differs between groups, so we wouldn't expect an interaction term.
+
+```{r}
+fit_RT_FxIQ <- brm(RT ~ 1 + F * IQ.c,
+  data = df_contrasts5,
+  family = gaussian(),
+  prior = c(
+    prior(normal(200, 50), class = Intercept),
+    prior(normal(0, 50), class = sigma),
+    prior(normal(0, 50), class = b)
+  ),
+  file = here::here("models", "notes", "ch9", "fit_RT_FxIQ")
+)
+```
+
+```{r}
+fixef(fit_RT_FxIQ)
+```
+
+Right, interaction term is really small and the 95% confidence interval crosses 0.
+
+### Estimating a group difference and controlling for a covariate
+
+Differet dataset:
+
+```{r}
+data("df_contrasts6")
+levels(df_contrasts6$F) <- c("simple", "complex")
+```
+
+
+### Estimating differences in slopes
+
+## Interactions in generalized linear models (with non-linear link functions) and non-linear models
+
+## Summary
+
+
+# Session Info
+
+Compiled with `r R.version$version` (`r R.version$nickname`) in RStudio version 2023.12.1.402 (Ocean Storm).
+
+```{r}
+#| eval: false
+#| echo: false
+RStudio.Version()$version; RStudio.Version()$release_name
+```
+
+```{r}
+sessionInfo()
+```
+
+

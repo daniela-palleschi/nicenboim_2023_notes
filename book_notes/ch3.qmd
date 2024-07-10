@@ -1,17 +1,21 @@
 ---
-title: "Ch. 3"
+title: "Computational Bayesian data analysis"
+subtitle: "Chapter 3 notes"
 ---
+
+This document contains my chapter notes from [Ch. 3 (Computational Bayesian data analysis)](https://vasishth.github.io/bayescogsci/book/ch-compbda.html) from @nicenboim_introduction_nodate.
 
 # Set up {-}
 
 ```{r, results = "hide", warning=F,message=F,error=F}
+#| code-fold: true
 # set global knit options
 knitr::opts_chunk$set(echo = T, # print chunks?
                       eval = T, # run chunks?
                       error = F, # print errors?
                       warning = F, # print warnings?
                       message = F, # print messages?
-                      cache = T # cache?; be careful with this!
+                      cache = F # cache?; be careful with this!
                       )
 
 # suppress scientific notation
@@ -177,7 +181,8 @@ fit_press <- brm(
   ),
   chains = 4,
   iter = 2000,
-  warmup = 1000
+  warmup = 1000,
+  file = here::here("models", "notes", "ch3", "fit_press_1")
 )
 ```
 
@@ -513,7 +518,8 @@ fit_press_unif <- brm(rt ~ 1,
   iter = 3000,
   # the following needed to be changed to achieve convergence
   control = list(adapt_delta = .99,
-                 max_treedepth = 15)
+                 max_treedepth = 15),
+  file = here::here("models", "notes", "ch3", "fit_press_unif")
 )
 ```
 
@@ -548,7 +554,8 @@ fit_press_inf <- brm(rt ~ 1,
     # brms knows that SDs need to be bounded
     # to exclude values below zero:
     prior(normal(100, 10), class = sigma)
-  )
+  ),
+  file = here::here("models", "notes", "ch3", "fit_press_inf")
 )
 ```
 
@@ -578,7 +585,8 @@ fit_press_prin <- brm(rt ~ 1,
   prior = c(
     prior(normal(200, 100), class = Intercept),
     prior(normal(50, 50), class = sigma)
-  )
+  ),
+  file = here::here("models", "notes", "ch3", "fit_press_prin")
 )
 ```
 
@@ -808,7 +816,8 @@ fit_prior_press_ln <- brm(rt ~ 1,
     prior(normal(0, 1), class = sigma)
   ),
   sample_prior = "only", # this is how we tell the model to only produce priors!
-  control = list(adapt_delta = .9)
+  control = list(adapt_delta = .9),
+  file = here::here("models", "notes", "ch3", "fit_prior_press_ln")
 )
 ```
 
@@ -883,7 +892,8 @@ fit_press_ln <- brm(rt ~ 1,
   prior = c(
     prior(normal(6, 1.5), class = Intercept),
     prior(normal(0, 1), class = sigma)
-  )
+  ),
+  file = here::here("models", "notes", "ch3", "fit_press_ln")
 )
 ```
   
@@ -961,7 +971,8 @@ fit_press <- brm(rt ~ 1,
   ),
   chains = 4,
   iter = 2000,
-  warmup = 1000
+  warmup = 1000,
+  file = here::here("models", "notes", "ch3", "fit_press")
   ## uncomment for prior predictive:
   ## sample_prior = "only",
   ## uncomment when dealing with divergent transitions
@@ -1006,7 +1017,7 @@ pp_check(fit_press, ndraws = 100, type = "stat", stat = "mean",
 
 # Session Info
 
-Compiled with `r R.version$version` (`r R.version$nickname`) in RStudio version 2023.3.0.386 (Cherry Blossom).
+Compiled with `r R.version$version` (`r R.version$nickname`) in RStudio version 2023.12.1.402 (Ocean Storm).
 
 ```{r}
 #| eval: false
@@ -1015,15 +1026,6 @@ RStudio.Version()$version; RStudio.Version()$release_name
 ```
 
 ```{r}
-#| echo: false
-system("say -v Moira your script has finished running")
-```
-
-```{r}
 sessionInfo()
 ```
 
-# References {.unlisted .unnumbered visibility="uncounted"}
-
-::: {#refs custom-style="Bibliography"}
-:::
