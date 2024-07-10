@@ -23,27 +23,34 @@ book:
       #   href: https://moodle.hu-berlin.de/course/view.php?id=124123
       #   text: Moodle
   chapters:
-    # - part: "Kursübersicht"
-    #   chapters:
-    - index.qmd
+    - part: "Overview"
+      chapters:
+      - index.qmd
+      - setup/project_setup.qmd
         # - setup/setup.qmd
     - part: "Book notes"
       chapters:
         - book_notes/ch1.qmd
-        # - book_notes/ch2.qmd
-        # - book_notes/ch3.qmd
-        # - book_notes/ch4.qmd
-        # - book_notes/ch5.qmd
+        - book_notes/ch2.qmd
+        - book_notes/ch3.qmd
+        - book_notes/ch4.qmd
+        - book_notes/ch5.qmd
+        - book_notes/ch6.qmd
+        - book_notes/ch7.qmd
         - book_notes/ch8.qmd
+        - book_notes/ch9.qmd
+        - book_notes/ch14.qmd
+  appendices:
     - part: "Book exercises"
       chapters:
         - book_exercises/ch1_exercises.qmd
-        # - book_exercises/ch2_exercises.qmd
+        - book_exercises/ch2_exercises.qmd
         # - book_exercises/ch3_exercises.qmd
-        # - book_exercises/ch4_exercises.qmd
-        # - book_exercises/ch5_exercises.qmd
-        # - book_exercises/ch6_exercises.qmd
+        - book_exercises/ch4_exercises.qmd
+        - book_exercises/ch5_exercises.qmd
+        - book_exercises/ch6_exercises.qmd
         - book_exercises/ch8_exercises.qmd
+        - book_exercises/ch9_exercises.qmd
     - references.qmd
 
 bibliography: references.bib
@@ -64,7 +71,7 @@ format:
     code-tools: true
     code-overflow: wrap
     page-layout: full
-    embed-resources: true
+    embed-resources: false
     css: cutsom.css
     theme:
       light: flatly
