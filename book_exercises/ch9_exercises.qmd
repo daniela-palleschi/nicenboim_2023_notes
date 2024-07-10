@@ -1,0 +1,251 @@
+---
+title: "Ch. 9 Exercises"
+execute:
+  eval: true
+---
+
+## Set-up {.unnumbered}
+
+```{r}
+pacman::p_load(
+  tidyverse,
+  brms,
+  here,
+  Rmisc,
+  bcogsci,
+  MASS
+)
+summarise <- dplyr::summarise
+```
+
+## **Exercise 9.1** ANOVA coding for a four-condition design.
+
+> Load the following data. These data are from Experiment 1 in a set of reading studies on Persian (Safavi, Husain, and Vasishth 2016); we encountered these data in the preceding chapter’s exercises.
+
+```{r}
+library(bcogsci)
+data("df_persianE1")
+dat1 <- df_persianE1
+head(dat1)
+```
+
+> The four conditions are:
+>
+- Distance=short and Predictability=unpredictable
+- Distance=short and Predictability=predictable
+- Distance=long and Predictability=unpredictable
+- Distance=long and Predictability=predictable
+>
+For the data given above, define an ANOVA-style contrast coding, and compute main effects and interactions. Check with `hypr` what the estimated comparisons are with an ANOVA coding.
+
+### Sum-contrasts {.unnumbered}
+
+```{r}
+dat1$distance <- as.factor(dat1$distance)
+dat1$predability <- as.factor(dat1$predability)
+```
+
+
+```{r}
+contrasts(dat1$distance) <- contr.sum(2)
+contrasts(dat1$predability) <- contr.sum(2)
+```
+
+
+Print contrast matrix
+
+```{r}
+contrasts(dat1$distance)
+contrasts(dat1$predability)
+```
+
+### Main and interaction effects {.unnumbered}
+
+```{r}
+fit_sum <- brm(rt ~ 1 + distance * predability,
+  data = dat1,
+  family = lognormal(),
+  file = here::here("models/exercises/ch9/fit_sum")
+  # prior = c(
+  #   prior(normal(5, 2), class = Intercept),
+  #   prior(normal(0, 50), class = sigma),
+  #   prior(normal(0, 50), class = b)
+  # )
+)
+```
+
+```{r}
+fixef(fit_sum)
+```
+
+```{r}
+plot(fit_sum)
+```
+
+### Create matrix grid {.unnumbered}
+
+```{r}
+library(hypr)
+```
+
+Create contrast matrix with a single four-level factor.
+
+```{r}
+t(fractions(HcInt <- rbind(
+  distance = c(long_pred = 1 / 4, long_unpred = 1 / 4, short_pred = -1 / 4, short_unpred = -1 / 4),
+  predability = c(long_pred = 1 / 4, long_unpred = -1 / 4, short_pred = 1 / 4, short_unpred = -1 / 4),
+  AxB = c(long_pred = 1 / 4, long_unpred = -1 / 4, short_pred = -1 / 4, short_unpred = 1 / 4)
+)))
+```
+
+```{r}
+t(HcInt)
+```
+
+
+```{r}
+(XcInt <- ginv2(HcInt))
+```
+
+Create factor4 which has the 4 levels.
+
+```{r}
+dat1 <-
+  dat1 |> 
+  mutate(
+    factor4 = as.factor(
+      paste(distance, str_remove(predability, "ictable"), sep = "_"))
+  )
+```
+
+Check.
+
+```{r}
+dat1 |> 
+  distinct(distance, predability, factor4)
+```
+
+Set contrasts and check.
+
+```{r}
+contrasts(dat1$factor4) <- XcInt
+```
+
+```{r}
+contrasts(dat1$factor4)
+```
+
+Run model.
+
+```{r}
+fit_sum_factor4 <- brm(rt ~ 1 + factor4,
+  data = dat1,
+  family = lognormal(),
+  file = here::here("models/exercises/ch9/fit_sum_factor4")
+  # prior = c(
+  #   prior(normal(5, 2), class = Intercept),
+  #   prior(normal(0, 50), class = sigma),
+  #   prior(normal(0, 50), class = b)
+  # )
+)
+```
+
+
+```{r}
+fixef(fit_sum_factor4)
+```
+
+Re-print the sum contrast coded model to compare.
+
+```{r}
+fixef(fit_sum)
+```
+
+```{r}
+plot(fit_sum_factor4)
+```
+
+Yup they're comparable.
+
+### With hypr {.unnumbered}
+
+```{r}
+hAxB <- hypr(
+  distance = (long_pred + long_unpred) / 2 ~ (short_pred + short_unpred) / 2,
+  predability = (long_pred + short_pred) / 2 ~ (long_unpred + short_unpred) / 2,
+  AxB = (long_pred - long_unpred) ~ (short_pred - short_unpred)
+)
+hAxB
+```
+
+Update contrasts and check.
+
+```{r}
+contrasts(dat1$factor4) <- contr.hypothesis(hAxB)
+```
+
+```{r}
+contrasts(dat1$factor4)
+```
+
+```{r}
+fit_hypr_factor4 <- brm(rt ~ 1 + factor4,
+  data = dat1,
+  family = lognormal(),
+  file = here::here("models/exercises/ch9/fit_hypr_factor4")
+  # prior = c(
+  #   prior(normal(5, 2), class = Intercept),
+  #   prior(normal(0, 50), class = sigma),
+  #   prior(normal(0, 50), class = b)
+  # )
+)
+```
+
+```{r}
+fixef(fit_hypr_factor4)
+```
+
+Compare to sum contrast coded model.
+
+```{r}
+fixef(fit_sum_factor4)
+```
+
+Right, with hypr the estimates are about double the size. This is caus we've applied scalling: the main effect now directly estiamtes difference between averages and the interaction estimates the difference between these differences. Alsternatively we could've used the `ifelse()` function (my preference).
+
+## **Exercise 9.2** ANOVA and nested comparisons in a 2 × 2 × 2 design
+
+> Load the following data set. This is a 2 × 2 × 2 design from Jäger et al. (2020), with the factors Grammaticality (grammatical vs. ungrammatical), Dependency (Agreement vs. Reflexives), and Interference (Interference vs. no interference). The experiment is a replication attempt of Experiment 1 reported in Dillon et al. (2013).
+>
+
+```{r}
+library(bcogsci)
+data("df_dillonrep")
+```
+
+```{r}
+head(df_dillonrep)
+```
+
+> 
+- The grammatical conditions are a,b,e,f. The rest of the conditions are ungrammatical.
+- The agreement conditions are a,b,c,d. The other conditions are reflexives.
+- The interference conditions are a,d,e,h, and the others are the no-interference conditions.
+>
+The dependent measure of interest is TFT (total fixation time, in milliseconds).
+>
+Using a linear model, do a main effects and interactions ANOVA contrast coding, and obtain an estimate of the main effects of Grammaticality, Dependency, and Interference, and all interactions. You may find it easier to code the contrasts coding the main effects as +1, -1, using ifelse() in R to code vectors corresponding to each main effect. This will make the specification of the interactions easy.
+>
+The researchers had a further research hypothesis: in ungrammatical sentences only, agreement would show an interference effect but reflexives would not. In grammatical sentences, both agreement and reflexives are expected to show interference effects. This kind of research question can be answered with nested contrast coding.
+>
+To carry out the relevant nested contrasts, define contrasts that estimate the effects of
+>
+- grammaticality
+- dependency type
+- the interaction between grammaticality and dependency type
+- reflexives interference within grammatical conditions
+- agreement interference within grammatical conditions
+- reflexives interference within ungrammatical conditions
+- agreement interference within ungrammatical conditions
+>
+Do the estimates match expectations? Check this by computing the condition means and checking that the estimates from the models match the relevant differences between conditions or clusters of conditions.

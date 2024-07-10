@@ -96,7 +96,9 @@ fit_pupil <- brm(p_size ~ 1 + c_load +
                    prior(normal(0, 100), class = b, coef = c_load),
                    prior(normal(0, 1000), class = sd),
                    prior(lkj(2), class = cor)
-                 ) )
+                 ),
+                 file = here::here("models", "exercises", "ch5", "fit_pupil")
+                 )
 ```
 :::
 
@@ -151,7 +153,9 @@ fit_pupil_2 <- brm(p_size ~ 1 + c_load +
                    prior(normal(0, 100), class = b, coef = c_load),
                    prior(normal(0, 1000), class = sd),
                    prior(lkj(2), class = cor)
-                 ) )
+                 ),
+                 file = here::here("models", "exercises", "ch5", "fit_pupil_2")
+                 )
 ```
 
 ```{r}
@@ -317,7 +321,8 @@ fit_df_gg05_rc <-
         prior(normal(0, 1), class = sd),
         prior(lkj(2), class = cor)
       ),
-    data = df_gg05_rc
+    data = df_gg05_rc,
+    file = here::here("models", "exercises", "ch5", "fit_df_gg05_rc")
   )
 
 fit_df_gg05_rc
@@ -420,7 +425,8 @@ fit_df_gg05_rc_tight <-
         prior(normal(0, 1), class = sd),
         prior(lkj(2), class = cor)
       ),
-    data = df_gg05_rc
+    data = df_gg05_rc,
+    file = here::here("models", "exercises", "ch5", "fit_df_gg05_rc_tight")
   )
 
 fit_df_gg05_rc_tight
@@ -450,7 +456,8 @@ fit_df_gg05_rc_wide <-
         prior(normal(0, 1), class = sd),
         prior(lkj(2), class = cor)
       ),
-    data = df_gg05_rc
+    data = df_gg05_rc,
+    file = here::here("models", "exercises", "ch5", "fit_df_gg05_rc_wide")
   )
 
 fit_df_gg05_rc_wide
@@ -596,7 +603,8 @@ fit_gw_norm <- brm(rt ~ 1 + type +
                    (1 + type | item), 
                  data = df_gibsonwu,
                  family = gaussian(),
-                 prior = priors_gw_norm)
+                 prior = priors_gw_norm,
+                 file = here::here("models", "exercises", "ch5", "fit_gw_norm"))
 ```
 :::
 
@@ -624,7 +632,9 @@ fit_gw_log <- brm(rt ~ 1 + type +
                    (1 + type | item), 
                  data = df_gibsonwu,
                  family = lognormal(),
-                 prior = priors_gw_log)
+                 prior = priors_gw_log,
+                 file = here::here("models", "exercises", "ch5", "fit_gw_log")
+                 )
 ```
 :::
 
@@ -783,7 +793,9 @@ fit_gw2_log <- brm(rt ~ 1 + type +
                    (1 + type | item), 
                  data = df_gibsonwu2,
                  family = lognormal(),
-                 prior = priors_gw2_log)
+                 prior = priors_gw2_log,
+                 file = here::here("models", "exercises", "ch5", "fit_gw2_log")
+                 )
 ```
 
 ```{r}
@@ -860,7 +872,9 @@ fit_gw12_log <- brm(rt ~ 1 + type +
                    (1 + type | item), 
                  data = df_gw12,
                  family = lognormal(),
-                 prior = priors_gw12_log)
+                 prior = priors_gw12_log,
+                 file = here::here("models", "exercises", "ch5", "fit_gw12_log")
+                 )
 ```
 
 ```{r}
@@ -902,7 +916,9 @@ fit_gw12_log_reg <- brm(rt ~ 1 + type +
                    (1 + type | item), 
                  data = df_gw12,
                  family = lognormal(),
-                 prior = priors_gw12_log_reg)
+                 prior = priors_gw12_log_reg,
+                 file = here::here("models", "exercises", "ch5", "fit_gw12_log_reg")
+                 )
 ```
 
 ```{r}
@@ -962,23 +978,22 @@ The research question is whether the difference in reading times between high an
 
 ## Exercise 5.8
 
-## Quarto
+# Session Info
 
-Quarto enables you to weave together content and executable code into a finished presentation. To learn more about Quarto presentations see <https://quarto.org/docs/presentations/>.
-
-## Bullets
-
-When you click the **Render** button a document will be generated that includes:
-
--   Content authored with markdown
--   Output from executable code
-
-## Code
-
-When you click the **Render** button a presentation will be generated that includes both content and the output of embedded code. You can embed code like this:
+Compiled with `r R.version$version` (`r R.version$nickname`) in RStudio version 2023.12.1.402 (Ocean Storm).
 
 ```{r}
-1 + 1
+#| eval: false
+#| echo: false
+RStudio.Version()$version; RStudio.Version()$release_name
 ```
 
+```{r}
+sessionInfo()
+```
+
+# References {.unnumbered}
+
+::: {#refs custom-style="Bibliography"}
+:::
 

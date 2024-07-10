@@ -28,7 +28,7 @@ knitr::opts_chunk$set(echo = T,
                       error = F,
                       warning = F,
                       message = F,
-                      cache = T)
+                      cache = F)
 
 # suppress scientific notation
 options(scipen=999)
@@ -263,3 +263,21 @@ ggpubr::ggarrange(
 )
 ```
 
+# Session Info
+
+Compiled with `r R.version$version` (`r R.version$nickname`) in RStudio version 2023.12.1.402 (Ocean Storm).
+
+```{r}
+#| eval: false
+#| echo: false
+RStudio.Version()$version; RStudio.Version()$release_name
+```
+
+```{r}
+sessionInfo()
+```
+
+# References {.unnumbered}
+
+::: {#refs custom-style="Bibliography"}
+:::

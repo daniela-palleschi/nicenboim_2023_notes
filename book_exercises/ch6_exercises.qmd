@@ -1,6 +1,6 @@
 ---
 title: "Ch. 6 - Priors"
-cache: true
+subtitle: "Chapter 6 Exercises"
 ---
 
 
@@ -38,7 +38,8 @@ head(df_gg05_rc)
 
 ```{r}
 fit_gg05 <- brm(RT ~ c_cond + (1 + c_cond || subj) +
-                  (1 + c_cond || item), df_gg05_rc)
+                  (1 + c_cond || item), df_gg05_rc,
+                file = here::here("models", "exercises", "ch6", "fit_gg05"))
 ```
 
 ```{r}
@@ -50,8 +51,20 @@ fit_gg05 <- brm(RT ~ c_cond + (1 + c_cond || subj) +
 Compare these estimates to a frequentist model:
 
 ```{r}
+#| eval: false
 fit_lmer <- lmer(RT ~ c_cond + (1 + c_cond || subj) +
                    (1 + c_cond || item), df_gg05_rc)
+# store as RDS
+saveRDS(fit_lmer, here::here("models", "exercises", "ch6", "fit_lmer.rds"))
+```
+
+```{r}
+fit_lmer <- readRDS(here::here("models", "exercises", "ch6", "fit_lmer.rds"))
+```
+
+
+
+```{r}
 b <- summary(fit_lmer)$coefficients["c_cond", "Estimate"]
 SE <- summary(fit_lmer)$coefficients["c_cond", "Std. Error"]
 ## estimate of the slope and
@@ -73,7 +86,8 @@ fit_gg05_unif <- brm(RT ~ c_cond + (1 + c_cond || subj) +
           lb = -2000, ub = 2000),
     prior(normal(0, 500), class = sd),
     prior(normal(0, 500), class = sigma)
-  ), df_gg05_rc
+  ), df_gg05_rc,
+                file = here::here("models", "exercises", "ch6", "fit_gg05_unif")
   )
 ```
 
@@ -99,6 +113,21 @@ rbind(names, values) |> as_tibble()
 ```
 
 ### Eliciting a prior for the intercept
+
+# Session Info
+
+Compiled with `r R.version$version` (`r R.version$nickname`) in RStudio version 2023.12.1.402 (Ocean Storm).
+
+```{r}
+#| eval: false
+#| echo: false
+RStudio.Version()$version; RStudio.Version()$release_name
+```
+
+```{r}
+sessionInfo()
+```
+
 
 
 
