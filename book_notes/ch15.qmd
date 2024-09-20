@@ -1,0 +1,284 @@
+---
+title: "Bayes factors"
+subtitle: "Chapter 15 notes"
+date: "09/20/2024"
+editor_options: 
+  chunk_output_type: console
+---
+
+These notes accompany [Ch. 15 (Bayes Factor)](https://vasishth.github.io/bayescogsci/book/ch-bf.html) of the current version of [Bayesian Data Analysis for Cognitive Science](https://vasishth.github.io/bayescogsci).
+
+This chapter is based on @schad_toward_2021 (preprint) and @schad_workflow_2023 (published).
+
+One key benefit of Bayesian is the possibility to use probabilistic quantifications of the evidence that data provide in support of one model versus another. To perform model coparison and hypothesis testing is done via Bayes factors which quantify the evidence for or against one statistical/computation model versus another. This chapter focuses on Bayes factors to compare models and obtain evidence for hypotheses.
+
+Bayes factor analyses are highly sensitive and dependent on prior assumptions about model parameters, leading to quite a bit of researcher degrees of freedom. Some researchers use default prior distributions, but these can result in overly simplistic perspective and can be misleading. Rather, we cannot just rely on defaults but must used principled, informed priors based on our expertise.
+
+# Set-up {-}
+
+```{r}
+#| code-fold: true
+library(MASS)
+## be careful to load dplyr after MASS
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(extraDistr)
+library(ggplot2)
+library(loo)
+library(bridgesampling)
+library(brms)
+library(bayesplot)
+library(tictoc)
+library(hypr)
+library(bcogsci)
+library(lme4)
+library(rstan)
+# This package is optional, see https://mc-stan.org/cmdstanr/:
+library(cmdstanr)
+# This package is optional, see https://hyunjimoon.github.io/SBC/:
+library(SBC)
+library(SHELF)
+library(rootSolve)
+
+## Save compiled models:
+rstan_options(auto_write = FALSE)
+## Parallelize the chains using all the cores:
+options(mc.cores = parallel::detectCores())
+# To solve some conflicts between packages:
+select <- dplyr::select
+extract <- rstan::extract
+```
+
+
+# Hypothesis testing using the Bayes factor
+
+## Marginal likelihood
+
+Bayesian inference quantifies undertainty associated with a parameter, meaning we must accept that knowledge of the "true" parameter value is uncertain. Computing th emarginal likelihood is computing the *likelihood* given all plausible values for the model parameter. These plausible values are defined by our priors (I believe?).
+
+Let's imagine a study with a binary outcome: success of failure. If we have 80 successes out of 100 trials, we can build a simple model by assuming the data have a binomial distribution. In a bionomial distribution $n$ independent trials are performed with the probability of a success vs. failure is $\theta$. The binomial distribution is the probability distribution of the number of successes ($k$) for a given sample of experiments ($X$).
+
+We may have prior information about $\theta$ (our probability parameter) based on previous evidence/literature, domain knowledge, or just our beliefs. There are two prior parameters: $a$ and $b$ which represent the prior number of successes and failures, respectively. Assume $a$ = 4 and $b$ = 2.
+
+```{r}
+# First we multiply the likelihood with the prior
+plik1 <- function(theta) {
+  dbinom(x = 80, size = 100, prob = theta) *
+    dbeta(x = theta, shape1 = 4, shape2 = 2)
+}
+# Then we integrate (compute the area under the curve):
+(MargLik1 <- integrate(f = plik1, lower = 0, upper = 1)$value)
+```
+
+Here we see a pretty low marginal likelihood, meaning a low likelihood of observing the data after integrating out the influence of the model parameter $\theta$. Basically, this model has a low proportion of good predictions. 
+
+A model will have a higher marginal likelihood if it makes a high proportion of good predictions. Flexible models will divide prior predictive probability density across all of the possible predictions, and can therefore predict many different outcomes.
+
+Let's run another model with a more flexible, spread-out prior.
+
+```{r}
+plik2 <- function(theta) {
+  dbinom(x = 80, size = 100, prob = theta) *
+    dbeta(x = theta, shape1 = 1, shape2 = 1)
+}
+(MargLik2 <- integrate(f = plik2, lower = 0, upper = 1)$value)
+```
+
+
+## Bayes factor
+
+# Examining the N400 effect with Bayes factor
+
+```{r}
+priors1 <- c(prior(normal(2, 5), class = Intercept),
+             prior(normal(0, 5), class = b),
+             prior(normal(10, 5), class = sigma),
+             prior(normal(0, 2), class = sd),
+             prior(lkj(4), class = cor))
+```
+
+```{r}
+data(df_eeg)
+df_eeg <- df_eeg %>%
+  mutate(c_cloze = cloze - mean(cloze))
+```
+
+```{r}
+head(df_eeg)
+```
+
+Fit a model with our priors:
+
+```{r}
+fit_N400_h_linear <- brm(n400 ~ c_cloze +
+                           (c_cloze | subj) + (c_cloze | item),
+                         prior = priors1,
+                         warmup = 2000,
+                         iter = 20000,
+                         control = list(adapt_delta = 0.9),
+                         save_pars = save_pars(all = TRUE),
+                         data = df_eeg,
+  file = here::here("models/notes/ch15/fit_N400_h_linear"))
+```
+
+Fixed effects
+
+```{r}
+fixef(fit_N400_h_linear)
+```
+
+And a null model:
+
+```{r}
+fit_N400_h_null <- brm(n400 ~ 1 +
+                         (c_cloze | subj) + (c_cloze | item),
+                       prior = priors1[priors1$class != "b", ],
+                       warmup = 2000,
+                       iter = 20000,
+                       control = list(adapt_delta = 0.9),
+                       save_pars = save_pars(all = TRUE),
+                       data = df_eeg,
+  file = here::here("models/notes/ch15/fit_N400_h_null"))
+```
+
+We want to integrate out the model parameters in order to computer the log marginal likelihood. This is more complex for models, so we use the `bridge_sampler()` function run on each of our models, which gives use the marginal log likelihoods for each of the models:
+
+```{r}
+margLogLik_linear <- bridge_sampler(fit_N400_h_linear, silent = TRUE)
+margLogLik_null <- bridge_sampler(fit_N400_h_null, silent = TRUE)
+```
+
+Then we can compute the Bayes factor using the `bayes_factor()` function:
+
+```{r}
+(BF_ln <- bayes_factor(margLogLik_linear, margLogLik_null))
+```
+
+One could also compute the Bayes factor by hand:
+
+```{r}
+exp(margLogLik_linear$logml - margLogLik_null$logml)
+```
+
+We see a pretty large BF value, meaning strong evidence in favour of the alternative model, representing strong evidence of an effect of cloze probability. However, we had good prior information about the model parameter $\beta$, but this isn't always the case.
+
+Let's try using uninformative priors:
+
+```{r}
+priors_vague <- c(prior(normal(2, 5), class = Intercept),
+                  prior(normal(0, 500), class = b),
+                  prior(normal(10, 5), class = sigma),
+                  prior(normal(0, 2), class = sd),
+                  prior(lkj(4), class = cor))
+```
+
+And fit a model with them:
+
+```{r}
+fit_N400_h_linear_vague <- brm(n400 ~ c_cloze +
+                                 (c_cloze | subj) + (c_cloze | item),
+                               prior = priors_vague,
+                               warmup = 2000,
+                               iter = 20000,
+                               control = list(adapt_delta = 0.9),
+                               save_pars = save_pars(all = TRUE),
+                               data = df_eeg,
+  file = here::here("models/notes/ch15/fit_N400_h_linear_vague"))
+```
+
+Looking at the posterior summary, we still estiamte the effect pretty well:
+
+```{r}
+posterior_summary(fit_N400_h_linear_vague, variable = "b_c_cloze")
+```
+
+```{r}
+margLogLik_linear_vague <- bridge_sampler(fit_N400_h_linear_vague,
+                                          silent = TRUE)
+```
+
+```{r}
+(BF_lnVague <- bayes_factor(margLogLik_linear_vague,
+                            margLogLik_null))
+```
+
+## Sensitivity analysis
+
+## Non-nested models
+
+Bayes factor analysis can be used to compare non-nested models, a major advantage over frequentist method slike the likelihood ratio test (ANOVA). For example, we could compare a model with log-transformed predictors to a model with untransformed predictors, *as long as the dependent variable is identical across observations (i.e., we cannot compare models with a log-transformed dependent variable and an untransformed/differently transformed dependent variable)*.
+
+Let's log-transform cloze probabilities from our N400 data (some are 0, so we first smooth the cloze probabilities using additive smoothing: pseudocounts set to one, so smooth probabilities is the number of responses with a given gender plus one divided by total number of responses plus two).
+
+```{r}
+df_eeg <- df_eeg %>%
+  mutate(scloze = (cloze_ans + 1) / (N + 2),
+         c_logscloze = log(scloze) - mean(log(scloze)))
+```
+
+Centre the predictor variable and scale it to the same SDs as the linear cloze probabilties.
+
+```{r}
+df_eeg <- df_eeg %>%
+  mutate(c_logscloze = scale(c_logscloze) * sd(c_cloze))
+```
+
+```{r}
+fit_N400_h_log <- brm(n400 ~ c_logscloze +
+                        (c_logscloze | subj) + (c_logscloze | item),
+                      prior = priors1,
+                      warmup = 2000,
+                      iter = 20000,
+                      control = list(adapt_delta = 0.9),
+                      save_pars = save_pars(all = TRUE),
+                      data = df_eeg,
+  file = here::here("models/notes/ch15/fit_N400_h_log"))
+```
+
+
+# The influence of the priors on Bayes factor: beyond the effect of interest
+
+# Bayes factors in theory and in practice
+
+## Bayes factors in theory: Stability and accuracy
+
+### Instability due to the effective number of posterior samples
+
+### Inaccuracy of Bayes factor estimates: Does the estimate approximate the true Bayes factor well?
+
+## Bayes factors in practice: Variability with the data
+
+### Variation associated with the data (subjects, items, and residual noise)
+
+### An example: The facilitatory interference effect
+
+### Determine priors using meta-analysis
+
+### Running a hierarchical Bayesian analysis
+
+### Variability of the Bayes factor: Posterior simulations
+
+### Visualize distribution of Bayes factors
+
+## A cautionary note about Bayes factors
+
+# Sample size determination using Bayes factors
+
+# Summary
+
+# Session Info
+
+Compiled with `r R.version$version` (`r R.version$nickname`) in RStudio version 2024.4.2.764 (Chocolate Cosmos).
+
+```{r}
+#| eval: false
+#| echo: false
+RStudio.Version()$version; RStudio.Version()$release_name
+```
+
+```{r}
+sessionInfo()
+```
+
+

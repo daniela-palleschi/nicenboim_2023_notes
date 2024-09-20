@@ -1,0 +1,24 @@
+---
+title: "Meta-analysis and measurement error models"
+subtitle: "Chapter 13 notes"
+date: "09/20/2024"
+---
+
+These notes accompany [Ch. 13 (Meta-analysis and measurement error models)](https://vasishth.github.io/bayescogsci/book/ch-remame.html) of the current version of [Bayesian Data Analysis for Cognitive Science](https://vasishth.github.io/bayescogsci).
+
+
+# Session Info
+
+Compiled with `r R.version$version` (`r R.version$nickname`) in RStudio version 2024.4.2.764 (Chocolate Cosmos).
+
+```{r}
+#| eval: false
+#| echo: false
+RStudio.Version()$version; RStudio.Version()$release_name
+```
+
+```{r}
+sessionInfo()
+```
+
+

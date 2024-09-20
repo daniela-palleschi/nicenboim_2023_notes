@@ -1,0 +1,26 @@
+---
+title: "Hierarchical models and reparameterization"
+subtitle: "Chapter 11 notes"
+date: "09/20/2024"
+---
+
+These notes accompany [Ch. 11 (Hierarchical models and reparameterization )](https://vasishth.github.io/bayescogsci/book/ch-complexstan.html) of the current version of [Bayesian Data Analysis for Cognitive Science](https://vasishth.github.io/bayescogsci).
+
+
+# Summary
+
+# Session Info
+
+Compiled with `r R.version$version` (`r R.version$nickname`) in RStudio version 2024.4.2.764 (Chocolate Cosmos).
+
+```{r}
+#| eval: false
+#| echo: false
+RStudio.Version()$version; RStudio.Version()$release_name
+```
+
+```{r}
+sessionInfo()
+```
+
+

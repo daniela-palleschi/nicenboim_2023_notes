@@ -1,4 +1,4 @@
-lang: de
+lang: en
 
 project:
   type: book
@@ -28,10 +28,12 @@ book:
       - index.qmd
       - setup/project_setup.qmd
         # - setup/setup.qmd
-    - part: "Book notes"
+    - part: "Foundational ideas"
       chapters:
         - book_notes/ch1.qmd
         - book_notes/ch2.qmd
+    - part: "Regression models with brms"
+      chapters:
         - book_notes/ch3.qmd
         - book_notes/ch4.qmd
         - book_notes/ch5.qmd
@@ -39,7 +41,16 @@ book:
         - book_notes/ch7.qmd
         - book_notes/ch8.qmd
         - book_notes/ch9.qmd
+    - part: "Advanced models with Stan"
+      chapters:
+        - book_notes/ch10.qmd
+        - book_notes/ch11.qmd
+        - book_notes/ch12.qmd
+        - book_notes/ch13.qmd
+    - part: "Model comparison"
+      chapters:
         - book_notes/ch14.qmd
+        - book_notes/ch15.qmd
   appendices:
     - part: "Book exercises"
       chapters:
@@ -51,6 +62,7 @@ book:
         - book_exercises/ch6_exercises.qmd
         - book_exercises/ch8_exercises.qmd
         - book_exercises/ch9_exercises.qmd
+        - book_exercises/ch15_exercises.qmd
     - references.qmd
 
 bibliography: references.bib
